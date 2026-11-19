@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contract Risk Analyzer — Document Intelligence & Risk Triage</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="brand">
+        <span class="brand-title">Contract Risk Analyzer</span>
+        <span class="brand-separator">/</span>
+        <span class="brand-subtitle">Document Intelligence & Risk Triage</span>
+      </div>
+      <div class="header-meta">
+        <div class="status-indicator">
+          <span class="status-dot operational" id="status-dot"></span>
+          <span class="status-text" id="status-text">Connecting...</span>
+        </div>
+        <div class="model-badge" id="model-badge">Model: Checking...</div>
+        <a href="/docs" target="_blank" class="nav-link">API Docs</a>
+      </div>
+    </div>
+  </header>
+
+  <div class="notice-bar" id="notice-bar">
+    <div class="notice-content">
+      <span class="notice-label">Notice</span>
+      <span class="notice-text" id="disclaimer-text">This system is for document analysis and risk triage only. It does not provide legal advice and does not replace review by qualified counsel.</span>
+      <span class="demo-badge hidden" id="demo-mode-badge">Demo mode — mock model</span>
+    </div>
+  </div>
+
+  <main class="app-container">
+    <nav class="tab-nav">
+      <button class="tab-btn active" data-tab="tab-document">Document Analysis</button>
+      <button class="tab-btn" data-tab="tab-clause">Clause Classification</button>
+      <button class="tab-btn" data-tab="tab-search">Precedent Search</button>
+      <button class="tab-btn" data-tab="tab-metrics">System & Model Metrics</button>
+    </nav>
+
+    <!-- Tab 1: Document Analysis -->
+    <section class="tab-panel active" id="tab-document">
+      <div class="workspace-grid">
+        <div class="input-panel">
+          <div class="panel-header">
+            <h2 class="panel-title">Contract Document Input</h2>
+            <div class="panel-actions">
+              <button class="btn btn-secondary btn-sm" id="btn-load-sample-doc">Load Sample MSA</button>
+              <button class="btn btn-ghost btn-sm" id="btn-clear-doc">Clear</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="doc-id-input" class="form-label">Document Reference ID</label>
+            <input type="text" id="doc-id-input" class="form-control" value="MSA-2026-001" placeholder="e.g. CONTRACT-001">
+          </div>
+          <div class="form-group upload-group">
+            <label for="contract-file-input" class="form-label">Upload Contract (PDF / DOCX / TXT)</label>
+            <div class="upload-control-row">
+              <input type="file" id="contract-file-input" class="file-input" accept=".pdf,.docx,.txt">
+              <span class="upload-status" id="upload-status"></span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="doc-text-input" class="form-label">Full Contract Text</label>
+            <textarea id="doc-text-input" class="form-control text-area" rows="18" placeholder="Paste full agreement text with numbered clauses or paragraphs..."></textarea>
+          </div>
+          <div class="panel-footer">
+            <span class="char-count" id="doc-char-count">0 characters</span>
+            <button class="btn btn-primary" id="btn-analyze-doc">Analyze Document</button>
+          </div>
+        </div>
+
+        <div class="results-panel" id="doc-results-container">
+          <div class="panel-header">
+            <h2 class="panel-title">Triage Report</h2>
+            <span class="meta-tag" id="doc-report-id">No document analyzed</span>
+          </div>
+
+          <div class="empty-state" id="doc-empty-state">
+            <p class="empty-title">No analysis generated yet</p>
+            <p class="empty-desc">Enter contract text on the left and click "Analyze Document", or click "Load Sample MSA" to evaluate a standard agreement.</p>
+          </div>
+
+          <div class="results-content hidden" id="doc-results-content">
+            <div class="summary-box" id="doc-summary-text"></div>
+
+            <div class="score-card-grid">
+              <div class="metric-card">
+                <div class="metric-label">Overall Risk Score</div>
+                <div class="metric-value-wrap">
+                  <span class="metric-value" id="doc-risk-score">0.0</span>
+                  <span class="metric-scale">/ 100</span>
+                </div>
+                <div class="risk-meter-bar">
+                  <div class="risk-meter-fill" id="doc-risk-meter"></div>
+                </div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Clauses Evaluated</div>
+                <div class="metric-value" id="doc-clause-count">0</div>
+                <div class="metric-sub">Segmented provisions</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Risk Flags Identified</div>
+                <div class="metric-value" id="doc-flags-count">0</div>
+                <div class="metric-sub">Requires triage</div>
+              </div>
+            </div>
+
+            <div class="severity-summary">
+              <div class="severity-badge-card sev-critical">
+                <span class="sev-name">Critical</span>
+                <span class="sev-count" id="sev-critical-count">0</span>
+              </div>
+              <div class="severity-badge-card sev-high">
+                <span class="sev-name">High</span>
+                <span class="sev-count" id="sev-high-count">0</span>
+              </div>
+              <div class="severity-badge-card sev-medium">
+                <span class="sev-name">Medium</span>
+                <span class="sev-count" id="sev-medium-count">0</span>
+              </div>
+              <div class="severity-badge-card sev-low">
+                <span class="sev-name">Low</span>
+                <span class="sev-count" id="sev-low-count">0</span>
+              </div>
+            </div>
+
+            <div class="section-block">
+              <h3 class="section-title">Recommendations</h3>
+              <ul class="recommendation-list" id="doc-recommendations"></ul>
+            </div>
+
+            <div class="section-block">
+              <h3 class="section-title">Detected Risk Flags</h3>
+              <div class="table-wrap">
+                <table class="data-table" id="flags-table">
+                  <thead>
+                    <tr>
+                      <th>Flag ID</th>
+                      <th>Clause Ref</th>
+                      <th>Severity</th>
+                      <th>Flag Type</th>
+                      <th>Reason</th>
+                      <th>Evidence Snippet</th>
+                    </tr>
+                  </thead>
+                  <tbody id="flags-table-body"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="section-block">
+              <h3 class="section-title">Clause Taxonomy Breakdown</h3>
+              <div class="table-wrap">
+                <table class="data-table" id="taxonomy-table">
+                  <thead>
+                    <tr>
+                      <th>Clause Classification</th>
+                      <th>Occurrences</th>
+                    </tr>
+                  </thead>
+                  <tbody id="taxonomy-table-body"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab 2: Clause Classification -->
+    <section class="tab-panel" id="tab-clause">
+      <div class="workspace-grid single-column">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="section-title">Single Clause Classification & Risk Flagging</h2>
+            <div class="clause-presets">
+              <span class="preset-label">Load preset:</span>
+              <button class="btn btn-secondary btn-sm" id="preset-term">Termination</button>
+              <button class="btn btn-secondary btn-sm" id="preset-indem">Indemnification</button>
+              <button class="btn btn-secondary btn-sm" id="preset-liab">Liability</button>
+              <button class="btn btn-secondary btn-sm" id="preset-law">Governing Law</button>
+              <button class="btn btn-secondary btn-sm" id="preset-assign">Assignment</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="form-group">
+              <label for="clause-text-input" class="form-label">Clause Text</label>
+              <textarea id="clause-text-input" class="form-control text-area" rows="5" placeholder="Enter an individual contract provision or clause..."></textarea>
+            </div>
+            <div class="card-actions">
+              <button class="btn btn-primary" id="btn-analyze-clause">Analyze Clause</button>
+              <button class="btn btn-ghost" id="btn-clear-clause">Clear</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card hidden" id="clause-result-card">
+          <div class="card-header">
+            <h2 class="section-title">Classification Result</h2>
+            <span class="meta-tag" id="clause-model-tag">Model: tfidf_logistic_regression</span>
+          </div>
+          <div class="card-body">
+            <div class="classification-hero">
+              <div class="classification-main">
+                <div class="label-heading">Primary Predicted Category</div>
+                <div class="predicted-label-text" id="clause-predicted-label">—</div>
+              </div>
+              <div class="classification-confidence">
+                <div class="label-heading">Confidence Score</div>
+                <div class="confidence-value" id="clause-confidence-val">0.0%</div>
+                <div class="confidence-bar-bg">
+                  <div class="confidence-bar-fill" id="clause-confidence-bar"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="section-block">
+              <h3 class="section-title">Top Candidate Predictions</h3>
+              <div class="table-wrap">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Rank</th>
+                      <th>Clause Category</th>
+                      <th>Probability Score</th>
+                    </tr>
+                  </thead>
+                  <tbody id="clause-topk-body"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="section-block">
+              <h3 class="section-title">Triggered Risk Flags</h3>
+              <div id="clause-risk-flags-container"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab 3: Precedent Search -->
+    <section class="tab-panel" id="tab-search">
+      <div class="workspace-grid single-column">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="section-title">Precedent & Clause Semantic Search</h2>
+          </div>
+          <div class="card-body">
+            <div class="search-bar-row">
+              <div class="form-group flex-1">
+                <label for="search-query-input" class="form-label">Search Query or Clause Concept</label>
+                <input type="text" id="search-query-input" class="form-control" placeholder="e.g. supplier shall indemnify and hold harmless customer from third-party claims">
+              </div>
+              <div class="form-group select-group">
+                <label for="search-topk-input" class="form-label">Top Results</label>
+                <select id="search-topk-input" class="form-control">
+                  <option value="3">3 results</option>
+                  <option value="5" selected>5 results</option>
+                  <option value="10">10 results</option>
+                </select>
+              </div>
+              <div class="search-btn-wrap">
+                <button class="btn btn-primary" id="btn-run-search">Search Precedents</button>
+              </div>
+            </div>
+            <div class="search-presets">
+              <span class="preset-label">Sample queries:</span>
+              <button class="btn btn-ghost btn-sm" id="search-preset-1">Indemnity obligations</button>
+              <button class="btn btn-ghost btn-sm" id="search-preset-2">Termination notice period</button>
+              <button class="btn btn-ghost btn-sm" id="search-preset-3">Governing jurisdiction</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card hidden" id="search-results-card">
+          <div class="card-header">
+            <h2 class="section-title">Search Results</h2>
+            <span class="meta-tag" id="search-results-count">0 items</span>
+          </div>
+          <div class="card-body">
+            <div class="results-list" id="search-results-list"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab 4: System & Model Metrics -->
+    <section class="tab-panel" id="tab-metrics">
+      <div class="workspace-grid single-column">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="section-title">Runtime API Performance</h2>
+            <button class="btn btn-secondary btn-sm" id="btn-refresh-metrics">Refresh Metrics</button>
+          </div>
+          <div class="card-body">
+            <div class="metric-card-grid">
+              <div class="metric-card">
+                <div class="metric-label">Analyzed Clauses</div>
+                <div class="metric-value" id="rt-analyzed-clauses">0</div>
+                <div class="metric-sub">Cumulative count</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Analyzed Documents</div>
+                <div class="metric-value" id="rt-analyzed-docs">0</div>
+                <div class="metric-sub">Cumulative count</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Average Latency</div>
+                <div class="metric-value-wrap">
+                  <span class="metric-value" id="rt-avg-latency">0.0</span>
+                  <span class="metric-scale">ms</span>
+                </div>
+                <div class="metric-sub">Processing time</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Total Risk Flags Detected</div>
+                <div class="metric-value" id="rt-risk-flags">0</div>
+                <div class="metric-sub">Triggered rules</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2 class="section-title">LexGLUE LEDGAR Baseline Benchmark (Real Local Evaluation)</h2>
+            <span class="meta-tag">Evaluated on 10,000 Test Provisions</span>
+          </div>
+          <div class="card-body">
+            <p class="benchmark-desc">
+              Trained on the LexGLUE LEDGAR contract provision dataset containing 60,000+ provisions across 100 clause categories using TF-IDF feature extraction with unigrams and bigrams, balanced class weighting, and Logistic Regression.
+            </p>
+            <div class="metric-card-grid">
+              <div class="metric-card">
+                <div class="metric-label">Test Accuracy</div>
+                <div class="metric-value">83.07%</div>
+                <div class="metric-sub">Overall classification rate</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Test Macro F1</div>
+                <div class="metric-value">0.7826</div>
+                <div class="metric-sub">Unweighted average across 100 classes</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Test Weighted F1</div>
+                <div class="metric-value">0.8332</div>
+                <div class="metric-sub">Class-size weighted F1 score</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Validation Macro F1</div>
+                <div class="metric-value">0.7737</div>
+                <div class="metric-sub">Split validation checkpoint</div>
+              </div>
+            </div>
+
+            <div class="section-block">
+              <h3 class="section-title">Model Specifications</h3>
+              <div class="table-wrap">
+                <table class="data-table">
+                  <tbody>
+                    <tr>
+                      <td class="font-medium">Model Architecture</td>
+                      <td>TF-IDF Vectorizer (50,000 features, n-gram range 1-2, min_df 2) + Logistic Regression (balanced)</td>
+                    </tr>
+                    <tr>
+                      <td class="font-medium">Training Dataset</td>
+                      <td>LexGLUE LEDGAR (US SEC EDGAR contract filings)</td>
+                    </tr>
+                    <tr>
+                      <td class="font-medium">Artifact Path</td>
+                      <td><code class="code-ref">models/baseline_tfidf.joblib</code> (42.1 MB)</td>
+                    </tr>
+                    <tr>
+                      <td class="font-medium">Inference Latency</td>
+                      <td>~1.8 ms per clause on standard CPU</td>
+                    </tr>
+                    <tr>
+                      <td class="font-medium">Jurisdiction Scope</td>
+                      <td>English-language commercial contracts. Not validated for non-English or foreign jurisdictions.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <div class="footer-inner">
+      <span>Contract Risk Analyzer &bull; Portfolio NLP Document Intelligence System</span>
+      <span class="footer-links">
+        <a href="/docs" target="_blank">Swagger OpenAPI</a> &bull;
+        <a href="/redoc" target="_blank">ReDoc</a> &bull;
+        <a href="/health" target="_blank">Health Check</a> &bull;
+        <a href="/metrics" target="_blank">Metrics JSON</a>
+      </span>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

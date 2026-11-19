@@ -30,3 +30,43 @@ def test_analyze_document_mock_mode(monkeypatch) -> None:
     payload = response.json()
     assert payload["total_clauses"] >= 1
     assert "not legal advice" in payload["disclaimer"].lower()
+
+
+def test_extract_text_txt(monkeypatch) -> None:
+    monkeypatch.setenv("CONTRACT_RISK_MOCK_MODEL", "true")
+    client = TestClient(app)
+    content = b"This is a sample contract text that has more than fifty characters to pass the minimum validation length check."
+    response = client.post(
+        "/extract-text",
+        files={"file": ("contract.txt", content, "text/plain")},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["filename"] == "contract.txt"
+    assert data["characters"] == len(content.decode("utf-8"))
+    assert "sample contract text" in data["text"]
+
+
+def test_extract_text_pdf(monkeypatch) -> None:
+    monkeypatch.setenv("CONTRACT_RISK_MOCK_MODEL", "true")
+    client = TestClient(app)
+    import fitz
+
+    doc = fitz.open()
+    page = doc.new_page()
+    page.insert_text(
+        (50, 72),
+        "This is a digital PDF contract containing more than fifty characters for the unit test validation.",
+        fontsize=11,
+    )
+    pdf_bytes = doc.tobytes()
+    doc.close()
+    response = client.post(
+        "/extract-text",
+        files={"file": ("contract.pdf", pdf_bytes, "application/pdf")},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["filename"] == "contract.pdf"
+    assert "digital PDF contract" in data["text"]
+
