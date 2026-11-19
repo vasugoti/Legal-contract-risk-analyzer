@@ -55,7 +55,7 @@ The system runs entirely locally. It needs **no paid APIs, no API keys and no GP
 ## How It Works
 
 <p align="center">
-  <img src="docs/images/architecture.svg" alt="System architecture of Legal Contract Risk Analyzer: presentation layer, FastAPI layer, NLP core engine and offline training pipeline" width="100%">
+  <img src="docs/images/architecture.png" alt="System architecture of Legal Contract Risk Analyzer: presentation layer, FastAPI layer, NLP core engine and offline training pipeline" width="100%">
 </p>
 
 1. **Extraction:** the uploaded file is converted to plain text (`/extract-text`). Scanned or image-only PDFs are rejected with a clear message.
