@@ -144,6 +144,11 @@ source .venv/bin/activate
 pip install -e ".[dev]"
 ```
 
+> **Note on PyTorch (CPU-only):** If you are running on CPU and want a smaller installation footprint, install CPU-only PyTorch:
+> ```bash
+> pip install torch --index-url https://download.pytorch.org/whl/cpu
+> ```
+
 ### 2. Run in demo mode (no model needed)
 
 **Windows (PowerShell):**
@@ -328,14 +333,16 @@ python scripts/evaluate_model.py --config configs/baseline.yaml --model models/b
 
 ### Reference results (LEDGAR test set)
 
-| Metric | Score |
-| --- | ---: |
-| Accuracy | 0.8307 |
-| Macro F1 | 0.7826 |
-| Weighted F1 | 0.8332 |
-| Validation macro F1 | 0.7737 |
+| Metric | TF-IDF + LogReg | LegalPro-BERT | Change |
+| --- | ---: | ---: | ---: |
+| Test Accuracy | 83.07% | **87.05%** | +3.98 pts |
+| Test Macro F1 | 0.7826 | **0.8014** | +1.88 pts |
+| Test Weighted F1 | 0.8332 | **0.8647** | +3.15 pts |
+| Test Micro F1 | 0.8307 | **0.8705** | +3.98 pts |
+| Top-3 Accuracy | — | **95.82%** | — |
+| *Legal-BERT, LexGLUE paper (published)* | *micro-F1: 0.882* | *macro-F1: 0.830* | *Reference* |
 
-Macro F1 is reported because LEDGAR is highly imbalanced, and accuracy alone hides weak performance on rare clause types. Inference takes about **3 ms per clause** on a laptop CPU. See [`docs/benchmark_report.md`](docs/benchmark_report.md), [`docs/model_card.md`](docs/model_card.md) and [`docs/error_analysis.md`](docs/error_analysis.md) for more detail.
+Macro F1 is reported because LEDGAR is highly imbalanced, and accuracy alone hides weak performance on rare clause types. LegalPro-BERT runs at **4.2 ms per clause on GPU (T4)** and **31.45 ms per clause on laptop CPU** (TF-IDF baseline: 1.99 ms). See [`docs/benchmark_report.md`](docs/benchmark_report.md), [`docs/model_card.md`](docs/model_card.md) and [`docs/error_analysis.md`](docs/error_analysis.md) for more detail.
 
 ### Optional: transformer model
 

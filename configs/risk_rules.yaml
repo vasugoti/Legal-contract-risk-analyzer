@@ -10,7 +10,7 @@ uncertainty:
 rules:
   - flag_type: TERMINATION_RISK
     severity: high
-    labels: ["termination", "term", "notice"]
+    labels: ["termination", "terminations", "term", "terms", "notice", "notices"]
     patterns: ["terminate", "termination", "without cause", "immediate effect"]
     reason: "Termination language may require closer human review."
   - flag_type: LIABILITY_RISK
@@ -20,7 +20,7 @@ rules:
     reason: "Liability allocation contains a potential risk indicator."
   - flag_type: INDEMNIFICATION_RISK
     severity: high
-    labels: ["indemnification", "indemnity"]
+    labels: ["indemnification", "indemnifications", "indemnity"]
     patterns: ["indemnify", "hold harmless", "defend"]
     reason: "Indemnification obligations may require closer review."
   - flag_type: CONFIDENTIALITY_RISK
@@ -30,17 +30,17 @@ rules:
     reason: "Confidentiality obligations should be validated against business expectations."
   - flag_type: GOVERNING_LAW_RISK
     severity: medium
-    labels: ["governing law", "jurisdiction"]
+    labels: ["governing law", "governing laws", "jurisdiction", "jurisdictions", "applicable law", "applicable laws", "venue", "venues"]
     patterns: ["governed by", "exclusive jurisdiction", "venue"]
     reason: "Governing law or forum language may affect review requirements."
   - flag_type: ASSIGNMENT_RISK
     severity: medium
-    labels: ["assignment"]
+    labels: ["assignment", "assignments", "assigns"]
     patterns: ["assign", "assignment", "without consent"]
     reason: "Assignment restrictions or permissions may require review."
   - flag_type: PAYMENT_RISK
     severity: medium
-    labels: ["payment", "fees"]
+    labels: ["payment", "payments", "fee", "fees"]
     patterns: ["late payment", "interest", "invoice", "non-refundable"]
     reason: "Payment terms contain indicators that may require operational review."
   - flag_type: EXCLUSIVITY_RISK
@@ -50,7 +50,7 @@ rules:
     reason: "Exclusivity terms can create business constraints."
   - flag_type: CHANGE_OF_CONTROL_RISK
     severity: high
-    labels: ["change of control"]
+    labels: ["change of control", "change in control"]
     patterns: ["change of control", "merger", "acquisition"]
     reason: "Change-of-control language may affect transaction flexibility."
   - flag_type: NON_COMPETE_RISK

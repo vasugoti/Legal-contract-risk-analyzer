@@ -1021,3 +1021,25 @@ body {
     align-items: stretch;
   }
 }
+
+.table-col-active {
+  background-color: rgba(37, 99, 235, 0.06);
+  font-weight: 600;
+}
+
+.row-reference {
+  background-color: var(--surface-alt);
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.amber-badge {
+  display: inline-block;
+  color: #b45309;
+  background-color: #fef3c7;
+  border: 1px solid #fde68a;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+}

@@ -118,9 +118,13 @@ document.addEventListener("DOMContentLoaded", () => {
         statusText.textContent = "API Operational";
         
         systemInfo = await infoRes.json();
-        const modelLabel = systemInfo.mock_mode ? "Mock Mode" : (systemInfo.model_name || "Trained Model");
+        let modelLabel = systemInfo.mock_mode ? "Mock Mode" : (systemInfo.model_name || "Trained Model");
+        if (systemInfo.fallback_active) {
+          modelLabel = `${systemInfo.model_name} [Fallback: ${systemInfo.fallback_reason}]`;
+          modelBadge.title = `Fallback active: ${systemInfo.fallback_reason}`;
+        }
         modelBadge.textContent = "Model: " + modelLabel;
-        clauseModelTag.textContent = "Model: " + (systemInfo.model_name || "tfidf_logistic_regression");
+        clauseModelTag.textContent = "Model: " + (systemInfo.model_name || "LegalPro-BERT");
 
         if (systemInfo.disclaimer) {
           disclaimerText.textContent = systemInfo.disclaimer;
@@ -132,6 +136,7 @@ document.addEventListener("DOMContentLoaded", () => {
         } else {
           demoBadge.classList.add("hidden");
         }
+        fetchMetrics();
       } else {
         throw new Error("Service returned error");
       }
@@ -142,7 +147,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Fetch Live Metrics
+  // Fetch Live Metrics & Benchmark Data
   async function fetchMetrics() {
     try {
       const res = await fetch("/metrics");
@@ -152,6 +157,96 @@ document.addEventListener("DOMContentLoaded", () => {
         rtAnalyzedDocs.textContent = Number(data.analyzed_documents || 0).toLocaleString();
         rtAvgLatency.textContent = Number(data.average_latency_ms || 0).toFixed(2);
         rtRiskFlags.textContent = Number(data.total_risk_flags || 0).toLocaleString();
+
+        const bm = data.benchmark;
+        if (!bm) return;
+
+        const bmTitle = document.getElementById("bm-title");
+        const bmBadge = document.getElementById("bm-badge");
+        const bmDesc = document.getElementById("bm-desc");
+        const bmFallbackBanner = document.getElementById("bm-fallback-banner");
+        const bmCards = document.getElementById("bm-cards");
+        const bmColTfidf = document.getElementById("bm-col-tfidf");
+        const bmColLegalPro = document.getElementById("bm-col-legalpro");
+        const bmCompTbody = document.getElementById("bm-comparison-tbody");
+        const bmSpecsTbody = document.getElementById("bm-specs-tbody");
+
+        if (bmTitle) bmTitle.textContent = bm.title;
+        if (bmBadge) bmBadge.textContent = bm.badge;
+        if (bmDesc) bmDesc.textContent = bm.description;
+
+        if (bmFallbackBanner) {
+          if (bm.fallback_active) {
+            bmFallbackBanner.className = "amber-badge";
+            bmFallbackBanner.textContent = `Fallback active: ${bm.fallback_reason || "Model check failed"}`;
+          } else {
+            bmFallbackBanner.className = "hidden";
+          }
+        }
+
+        // Render Cards
+        if (bmCards && Array.isArray(bm.cards)) {
+          bmCards.innerHTML = bm.cards.map(c => `
+            <div class="metric-card">
+              <div class="metric-label">${c.label}</div>
+              <div class="metric-value">${c.value}</div>
+              <div class="metric-sub">${c.sub}</div>
+            </div>
+          `).join("");
+        }
+
+        // Highlight active column in comparison table
+        const isLegalProActive = bm.effective_backend === "legalpro";
+        if (bmColLegalPro) {
+          bmColLegalPro.className = isLegalProActive ? "table-col-active" : "";
+          bmColLegalPro.innerHTML = `LegalPro-BERT ${isLegalProActive ? '<span class="meta-tag" style="font-size:10px;padding:1px 4px;margin-left:4px;color:var(--primary);border-color:var(--primary);">ACTIVE</span>' : ''}`;
+        }
+        if (bmColTfidf) {
+          bmColTfidf.className = !isLegalProActive ? "table-col-active" : "";
+          bmColTfidf.innerHTML = `TF-IDF + LogReg ${!isLegalProActive ? '<span class="meta-tag" style="font-size:10px;padding:1px 4px;margin-left:4px;color:var(--primary);border-color:var(--primary);">ACTIVE</span>' : ''}`;
+        }
+
+        // Render Comparison Table
+        if (bmCompTbody && Array.isArray(bm.comparison_table)) {
+          bmCompTbody.innerHTML = bm.comparison_table.map(row => {
+            if (row.is_reference) {
+              return `
+                <tr class="row-reference">
+                  <td class="font-medium">${row.metric}</td>
+                  <td>${row.tfidf}</td>
+                  <td>${row.legalpro}</td>
+                  <td>${row.change}</td>
+                </tr>
+              `;
+            }
+            return `
+              <tr>
+                <td class="font-medium">${row.metric}</td>
+                <td class="${!isLegalProActive ? 'table-col-active' : ''}">${row.tfidf}</td>
+                <td class="${isLegalProActive ? 'table-col-active' : ''}">${row.legalpro}</td>
+                <td class="font-semibold ${row.change.startsWith('+') ? 'text-success' : ''}">${row.change}</td>
+              </tr>
+            `;
+          }).join("");
+        }
+
+        // Render Model Specifications
+        if (bmSpecsTbody && Array.isArray(bm.specs)) {
+          bmSpecsTbody.innerHTML = bm.specs.map(spec => {
+            let valHtml = spec.value;
+            if (spec.label === "Fallback" && bm.fallback_active) {
+              valHtml = `<span>${spec.value}</span> <span class="amber-badge" style="margin-left:6px;">Fallback active: ${bm.fallback_reason}</span>`;
+            } else if (spec.label === "Model Checkpoint" || spec.label === "Artifact Path") {
+              valHtml = `<code class="code-ref">${spec.value}</code>`;
+            }
+            return `
+              <tr>
+                <td class="font-medium" style="width: 25%;">${spec.label}</td>
+                <td>${valHtml}</td>
+              </tr>
+            `;
+          }).join("");
+        }
       }
     } catch (err) {
       console.error("Failed to fetch metrics:", err);

@@ -327,35 +327,36 @@
           </div>
         </div>
 
-        <div class="card">
+        <div class="card" id="benchmark-card">
           <div class="card-header">
-            <h2 class="section-title">LexGLUE LEDGAR Baseline Benchmark (Real Local Evaluation)</h2>
-            <span class="meta-tag">Evaluated on 10,000 Test Provisions</span>
+            <h2 class="section-title" id="bm-title">LexGLUE LEDGAR Benchmark</h2>
+            <span class="meta-tag" id="bm-badge">Evaluated on 10,000 test provisions</span>
           </div>
           <div class="card-body">
-            <p class="benchmark-desc">
-              Trained on the LexGLUE LEDGAR contract provision dataset containing 60,000+ provisions across 100 clause categories using TF-IDF feature extraction with unigrams and bigrams, balanced class weighting, and Logistic Regression.
+            <div id="bm-fallback-banner" class="hidden" style="margin-bottom: 12px;"></div>
+            <p class="benchmark-desc" id="bm-desc">
+              Loading benchmark specifications...
             </p>
-            <div class="metric-card-grid">
-              <div class="metric-card">
-                <div class="metric-label">Test Accuracy</div>
-                <div class="metric-value">83.07%</div>
-                <div class="metric-sub">Overall classification rate</div>
-              </div>
-              <div class="metric-card">
-                <div class="metric-label">Test Macro F1</div>
-                <div class="metric-value">0.7826</div>
-                <div class="metric-sub">Unweighted average across 100 classes</div>
-              </div>
-              <div class="metric-card">
-                <div class="metric-label">Test Weighted F1</div>
-                <div class="metric-value">0.8332</div>
-                <div class="metric-sub">Class-size weighted F1 score</div>
-              </div>
-              <div class="metric-card">
-                <div class="metric-label">Validation Macro F1</div>
-                <div class="metric-value">0.7737</div>
-                <div class="metric-sub">Split validation checkpoint</div>
+            <div class="metric-card-grid" id="bm-cards">
+              <!-- Populated by app.js from /metrics -->
+            </div>
+
+            <div class="section-block">
+              <h3 class="section-title">Model Comparison (LexGLUE LEDGAR 10,000 Test Set)</h3>
+              <div class="table-wrap">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Metric</th>
+                      <th id="bm-col-tfidf">TF-IDF + LogReg</th>
+                      <th id="bm-col-legalpro">LegalPro-BERT</th>
+                      <th>Change</th>
+                    </tr>
+                  </thead>
+                  <tbody id="bm-comparison-tbody">
+                    <!-- Populated by app.js from /metrics -->
+                  </tbody>
+                </table>
               </div>
             </div>
 
@@ -363,27 +364,8 @@
               <h3 class="section-title">Model Specifications</h3>
               <div class="table-wrap">
                 <table class="data-table">
-                  <tbody>
-                    <tr>
-                      <td class="font-medium">Model Architecture</td>
-                      <td>TF-IDF Vectorizer (50,000 features, n-gram range 1-2, min_df 2) + Logistic Regression (balanced)</td>
-                    </tr>
-                    <tr>
-                      <td class="font-medium">Training Dataset</td>
-                      <td>LexGLUE LEDGAR (US SEC EDGAR contract filings)</td>
-                    </tr>
-                    <tr>
-                      <td class="font-medium">Artifact Path</td>
-                      <td><code class="code-ref">models/baseline_tfidf.joblib</code> (42.1 MB)</td>
-                    </tr>
-                    <tr>
-                      <td class="font-medium">Inference Latency</td>
-                      <td>~1.8 ms per clause on standard CPU</td>
-                    </tr>
-                    <tr>
-                      <td class="font-medium">Jurisdiction Scope</td>
-                      <td>English-language commercial contracts. Not validated for non-English or foreign jurisdictions.</td>
-                    </tr>
+                  <tbody id="bm-specs-tbody">
+                    <!-- Populated by app.js from /metrics -->
                   </tbody>
                 </table>
               </div>

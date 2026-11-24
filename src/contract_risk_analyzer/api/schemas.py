@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 from contract_risk_analyzer.data.schemas import RiskFlag, RiskReport, SearchResult
@@ -36,13 +38,23 @@ class MetricsResponse(BaseModel):
     analyzed_documents: int
     average_latency_ms: float
     total_risk_flags: int
+    active_backend: str = "legalpro"
+    active_model_name: str = "LegalPro-BERT"
+    benchmark: dict[str, Any] = Field(default_factory=dict)
 
 
 class ModelInfoResponse(BaseModel):
     model_name: str
-    mock_mode: bool
-    model_loaded: bool
-    disclaimer: str
+    active_backend: str = "legalpro"
+    model_id: str | None = None
+    revision: str | None = None
+    num_labels: int = 100
+    max_length: int | None = None
+    fallback_active: bool = False
+    fallback_reason: str | None = None
+    mock_mode: bool = False
+    model_loaded: bool = True
+    disclaimer: str = ""
 
 
 class DocumentAnalyzeResponse(RiskReport):

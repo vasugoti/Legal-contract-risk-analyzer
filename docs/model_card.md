@@ -24,12 +24,19 @@ Use LEDGAR validation and test splits after local download. The latest local run
 
 Supported metrics include accuracy, macro F1, micro F1, weighted F1, per-class precision/recall/F1, confusion matrix, and top confusing label pairs.
 
-Latest local TF-IDF baseline metrics:
+### LEDGAR 10,000 Test Set Comparison
 
-- validation macro F1: `0.7737`
-- test accuracy: `0.8307`
-- test macro F1: `0.7826`
-- test weighted F1: `0.8332`
+| Metric | TF-IDF + LogReg | LegalPro-BERT | Change |
+| --- | ---: | ---: | ---: |
+| Test Accuracy | 83.07% | **87.05%** | +3.98 pts |
+| Test Macro F1 | 0.7826 | **0.8014** | +1.88 pts |
+| Test Weighted F1 | 0.8332 | **0.8647** | +3.15 pts |
+| Test Micro F1 | 0.8307 | **0.8705** | +3.98 pts |
+| Top-3 Accuracy | — | **95.82%** | — |
+| *Legal-BERT, LexGLUE paper (published)* | *micro-F1: 0.882* | *macro-F1: 0.830* | *Reference* |
+
+- Model Checkpoint: `AmitTewari/test_trainer` (LegalPro-BERT, pinned revision `3fadda4002fc230b2195e1fe4c499af158418838`, ~108M params, 413 MB)
+- Latency: 4.2 ms/clause on GPU (Tesla T4), 31.45 ms/clause on laptop CPU. Fallback to TF-IDF baseline supported.
 
 ## Limitations
 

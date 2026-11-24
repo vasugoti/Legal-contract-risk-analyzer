@@ -24,6 +24,10 @@ models/*
 
 reports/*
 !reports/.gitkeep
+!reports/metrics_*.json
+!reports/ledgar_labels.txt
+!reports/backend_comparison.md
+!reports/progress_*.md
 
 *.pkl
 *.joblib

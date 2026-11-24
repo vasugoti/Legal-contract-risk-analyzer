@@ -1,0 +1,12 @@
+{
+  "model_id": "AmitTewari/test_trainer",
+  "revision": "3fadda4002fc230b2195e1fe4c499af158418838",
+  "accuracy": 0.8705,
+  "micro_f1": 0.8705,
+  "macro_f1": 0.8014,
+  "weighted_f1": 0.8647,
+  "top3_accuracy": 0.9582,
+  "gpu_ms_per_clause_t4": 4.2,
+  "cpu_ms_per_clause_laptop": 31.45,
+  "eval_dataset": "LexGLUE LEDGAR test split, 10000 clauses"
+}

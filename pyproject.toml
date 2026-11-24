@@ -20,6 +20,10 @@ dependencies = [
     "pymupdf>=1.24",
     "python-docx>=1.1",
     "python-multipart>=0.0.9",
+    "transformers>=4.38",
+    "torch>=2.1",
+    "safetensors>=0.4",
+    "datasets>=2.18",
 ]
 
 [project.optional-dependencies]
@@ -34,7 +38,10 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
-addopts = "-q"
+addopts = "-q -m 'not integration'"
+markers = [
+    "integration: marks tests requiring model download / HF datasets (deselect with '-m \"not integration\"')",
+]
 
 [tool.ruff]
 line-length = 100

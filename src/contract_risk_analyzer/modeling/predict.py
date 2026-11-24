@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import hashlib
+import os
 from pathlib import Path
 from typing import Any
 
 from contract_risk_analyzer.data.schemas import Clause, ClausePrediction, RiskReport
-from contract_risk_analyzer.modeling.registry import load_local_model
+from contract_risk_analyzer.modeling.registry import load_legalpro_model, load_local_model
 from contract_risk_analyzer.preprocessing.chunking import split_into_clauses
 from contract_risk_analyzer.risk.report import generate_risk_report
 
@@ -47,16 +48,38 @@ def mock_predict_clauses(clauses: list[Clause]) -> list[ClausePrediction]:
     return predictions
 
 
+def _resolve_classifier(
+    model_path: str | Path | None = None,
+    backend: str | None = None,
+) -> Any:
+    """Resolve classifier based on explicit model_path or configured backend."""
+    # If caller explicitly provided a .joblib file, use the local model loader directly
+    if model_path is not None and str(model_path).endswith(".joblib"):
+        return load_local_model(model_path)
+
+    chosen_backend = (backend or os.getenv("CONTRACT_RISK_CLASSIFIER", "legalpro")).strip().lower()
+
+    if chosen_backend == "tfidf":
+        target_path = model_path or "models/baseline_tfidf.joblib"
+        return load_local_model(target_path)
+
+    # Default: LegalPro-BERT with self-check & fallback
+    config_path = model_path or "configs/legalpro.yaml"
+    return load_legalpro_model(config_path)
+
+
 def predict_clauses(
     clauses: list[Clause],
     model_path: str | Path | None = None,
     mock: bool = False,
+    backend: str | None = None,
 ) -> list[ClausePrediction]:
     if mock:
         return mock_predict_clauses(clauses)
-    if model_path is None:
-        raise FileNotFoundError("No model path provided. Use --mock for deterministic demo mode.")
-    model = load_local_model(model_path)
+    if not clauses:
+        return []
+
+    model = _resolve_classifier(model_path=model_path, backend=backend)
     return model.predict_clauses([clause.clause_id for clause in clauses], [clause.text for clause in clauses])
 
 
@@ -66,9 +89,10 @@ def analyze_document_text(
     model_path: str | Path | None = None,
     mock: bool = False,
     risk_config_path: str = "configs/risk_rules.yaml",
+    backend: str | None = None,
 ) -> RiskReport:
     clauses = split_into_clauses(text, document_id=document_id)
-    predictions = predict_clauses(clauses, model_path=model_path, mock=mock)
+    predictions = predict_clauses(clauses, model_path=model_path, mock=mock, backend=backend)
     return generate_risk_report(document_id, clauses, predictions, config_path=risk_config_path)
 
 

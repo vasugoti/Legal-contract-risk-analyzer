@@ -1,0 +1,9 @@
+model:
+  model_id: AmitTewari/test_trainer
+  revision: 3fadda4002fc230b2195e1fe4c499af158418838
+  max_length: 512
+  batch_size: 16
+  fallback_model_path: models/baseline_tfidf.joblib
+  self_check:
+    text: "This Agreement shall be governed by and construed in accordance with the laws of the State of Delaware, without giving effect to any principles of conflicts of law."
+    expected_label: "Governing Laws"

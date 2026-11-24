@@ -70,3 +70,56 @@ def test_extract_text_pdf(monkeypatch) -> None:
     assert data["filename"] == "contract.pdf"
     assert "digital PDF contract" in data["text"]
 
+
+def test_model_info_mock_mode(monkeypatch) -> None:
+    monkeypatch.setenv("CONTRACT_RISK_MOCK_MODEL", "true")
+    client = TestClient(app)
+    response = client.get("/model/info")
+    assert response.status_code == 200
+    info = response.json()
+    assert info["mock_mode"] is True
+    assert info["active_backend"] == "mock"
+
+
+def test_model_info_tfidf_mode(monkeypatch) -> None:
+    monkeypatch.setenv("CONTRACT_RISK_MOCK_MODEL", "false")
+    monkeypatch.setenv("CONTRACT_RISK_CLASSIFIER", "tfidf")
+    client = TestClient(app)
+    response = client.get("/model/info")
+    assert response.status_code == 200
+    info = response.json()
+    assert info["mock_mode"] is False
+    assert info["active_backend"] == "tfidf"
+    assert info["model_name"] == "tfidf_logistic_regression"
+
+
+def test_metrics_legalpro_backend(monkeypatch) -> None:
+    monkeypatch.setenv("CONTRACT_RISK_MOCK_MODEL", "false")
+    monkeypatch.setenv("CONTRACT_RISK_CLASSIFIER", "legalpro")
+    client = TestClient(app)
+    response = client.get("/metrics")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["active_backend"] == "legalpro"
+    assert data["active_model_name"] == "LegalPro-BERT"
+    assert "benchmark" in data
+    bm = data["benchmark"]
+    assert bm["effective_backend"] == "legalpro"
+    assert "87.05%" in [c["value"] for c in bm["cards"]]
+
+
+def test_metrics_tfidf_backend(monkeypatch) -> None:
+    monkeypatch.setenv("CONTRACT_RISK_MOCK_MODEL", "false")
+    monkeypatch.setenv("CONTRACT_RISK_CLASSIFIER", "tfidf")
+    client = TestClient(app)
+    response = client.get("/metrics")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["active_backend"] == "tfidf"
+    assert data["active_model_name"] == "TF-IDF + Logistic Regression"
+    assert "benchmark" in data
+    bm = data["benchmark"]
+    assert bm["effective_backend"] == "tfidf"
+    assert "83.07%" in [c["value"] for c in bm["cards"]]
+
+

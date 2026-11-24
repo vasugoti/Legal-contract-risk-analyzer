@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
@@ -11,10 +12,21 @@ from contract_risk_analyzer.config.settings import load_yaml
 
 config = load_yaml("configs/api.yaml")
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    from contract_risk_analyzer.api.routes import _mock_mode, get_active_classifier
+
+    if not _mock_mode():
+        get_active_classifier()
+    yield
+
+
 app = FastAPI(
     title=config["service"]["title"],
     version=config["service"]["version"],
     description="NLP document intelligence service for contract clause analysis and risk triage.",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -28,7 +40,7 @@ app.include_router(router)
 
 
 @app.post("/extract-text")
-async def extract_text(file: UploadFile = File(...)):
+async def extract_text(file: UploadFile = File(...)):  # noqa: B008
     """Extract plain text from an uploaded PDF, DOCX or TXT contract."""
     data = await file.read()
     name = (file.filename or "").lower()
@@ -40,7 +52,9 @@ async def extract_text(file: UploadFile = File(...)):
             doc = fitz.open(stream=data, filetype="pdf")
             text = "\n".join(page.get_text() for page in doc)
         elif name.endswith(".docx"):
-            import io, docx
+            import io
+
+            import docx
             d = docx.Document(io.BytesIO(data))
             text = "\n".join(p.text for p in d.paragraphs)
         elif name.endswith(".txt"):
@@ -50,7 +64,7 @@ async def extract_text(file: UploadFile = File(...)):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(400, f"Could not read file: {e}")
+        raise HTTPException(400, f"Could not read file: {e}") from e
 
     if len(text.strip()) < 50:
         raise HTTPException(400, "No text found. Is this a scanned PDF? Please use a digital PDF.")
@@ -60,5 +74,3 @@ async def extract_text(file: UploadFile = File(...)):
 web_dir = Path(__file__).resolve().parent.parent / "web"
 if web_dir.exists():
     app.mount("/", StaticFiles(directory=str(web_dir), html=True), name="web")
-
-

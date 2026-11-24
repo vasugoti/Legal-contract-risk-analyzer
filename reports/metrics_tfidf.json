@@ -1,0 +1,11 @@
+{
+  "model_name": "tfidf_logistic_regression",
+  "artifact_path": "models/baseline_tfidf.joblib",
+  "accuracy": 0.8307,
+  "micro_f1": 0.8307,
+  "macro_f1": 0.7826,
+  "weighted_f1": 0.8332,
+  "validation_macro_f1": 0.7737,
+  "cpu_ms_per_clause": 1.99,
+  "eval_dataset": "LexGLUE LEDGAR test split, 10000 clauses"
+}
