@@ -96,6 +96,7 @@ def test_model_info_tfidf_mode(monkeypatch) -> None:
 def test_metrics_legalpro_backend(monkeypatch) -> None:
     monkeypatch.setenv("CONTRACT_RISK_MOCK_MODEL", "false")
     monkeypatch.setenv("CONTRACT_RISK_CLASSIFIER", "legalpro")
+    monkeypatch.setenv("CONTRACT_RISK_MODEL_CONFIG", "configs/legalpro.yaml")
     client = TestClient(app)
     response = client.get("/metrics")
     assert response.status_code == 200
@@ -106,6 +107,21 @@ def test_metrics_legalpro_backend(monkeypatch) -> None:
     bm = data["benchmark"]
     assert bm["effective_backend"] == "legalpro"
     assert "87.05%" in [c["value"] for c in bm["cards"]]
+
+
+def test_metrics_ledgar_sra_backend(monkeypatch) -> None:
+    monkeypatch.setenv("CONTRACT_RISK_MOCK_MODEL", "false")
+    monkeypatch.setenv("CONTRACT_RISK_CLASSIFIER", "legalpro")
+    monkeypatch.setenv("CONTRACT_RISK_MODEL_CONFIG", "configs/ledgar_sra.yaml")
+    client = TestClient(app)
+    response = client.get("/metrics")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["active_backend"] == "legalpro"
+    assert "LEDGAR-SRA" in data["active_model_name"]
+    assert "benchmark" in data
+    bm = data["benchmark"]
+    assert bm["effective_backend"] == "legalpro"
 
 
 def test_metrics_tfidf_backend(monkeypatch) -> None:

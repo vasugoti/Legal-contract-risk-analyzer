@@ -197,9 +197,13 @@ CONTRACT_RISK_MOCK_MODEL=false CONTRACT_RISK_MODEL_PATH=models/baseline_tfidf.jo
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `CONTRACT_RISK_MOCK_MODEL` | `true` | `true` = demo keyword classifier, `false` = trained model |
-| `CONTRACT_RISK_MODEL_PATH` | `models/baseline_tfidf.joblib` | Path to the trained classifier |
+| `CONTRACT_RISK_MOCK_MODEL` | `false` | `true` = demo keyword classifier, `false` = trained model |
+| `CONTRACT_RISK_CLASSIFIER` | `legalpro` | `legalpro` = transformer model (LEDGAR-SRA / LegalPro), `tfidf` = TF-IDF baseline |
+| `CONTRACT_RISK_MODEL_CONFIG` | `configs/ledgar_sra.yaml` | Active model configuration path (alternative: `configs/legalpro.yaml`) |
+| `CONTRACT_RISK_MODEL_PATH` | `models/baseline_tfidf.joblib` | Path to fallback or direct classifier artifact |
 | `CONTRACT_RISK_RETRIEVAL_INDEX` | `models/retrieval` | Path to a prebuilt search index (optional) |
+
+> **Note on Model Weights:** Model weights are not stored on GitHub (size limit). Place `model.safetensors` in `NLP/LEDGAR_SRA/` before running.
 
 A template is provided in `.env.example`.
 
@@ -322,9 +326,17 @@ The document report includes `overall_risk_score`, `severity_breakdown`, `risk_f
 | Validation | 10,000 |
 | Test | 10,000 |
 
-### Baseline model
+### Fine-Tuned Transformer: LEDGAR-SRA (Primary Model)
 
-TF-IDF (unigrams + bigrams, 50,000 features) with class-balanced Logistic Regression, configured in [`configs/baseline.yaml`](configs/baseline.yaml).
+The primary clause-classification model is **LEDGAR-SRA**, a RoBERTa-base sequence classification model (12 layers, 768 hidden, ~125M parameters) fine-tuned on the LexGLUE LEDGAR corpus across 100 clause categories.
+- Stored locally in `NLP/LEDGAR_SRA/` and loaded completely offline (`local_files_only=True`).
+- Configured in [`configs/ledgar_sra.yaml`](configs/ledgar_sra.yaml).
+- Evaluates with startup self-checks and automatic fallback to TF-IDF baseline if weights are missing or self-check fails.
+
+### Alternative Backends
+
+1. **LegalPro-BERT**: BERT-base-cased fine-tuned on LEDGAR (`AmitTewari/test_trainer`), configured in [`configs/legalpro.yaml`](configs/legalpro.yaml). Enable via `CONTRACT_RISK_MODEL_CONFIG=configs/legalpro.yaml`.
+2. **TF-IDF + Logistic Regression Baseline**: Fast baseline (50,000 features, class-balanced), configured in [`configs/baseline.yaml`](configs/baseline.yaml). Enable via `CONTRACT_RISK_CLASSIFIER=tfidf`.
 
 ```bash
 python scripts/train_baseline.py --config configs/baseline.yaml
@@ -342,7 +354,7 @@ python scripts/evaluate_model.py --config configs/baseline.yaml --model models/b
 | Top-3 Accuracy | — | **95.82%** | — |
 | *Legal-BERT, LexGLUE paper (published)* | *micro-F1: 0.882* | *macro-F1: 0.830* | *Reference* |
 
-Macro F1 is reported because LEDGAR is highly imbalanced, and accuracy alone hides weak performance on rare clause types. LegalPro-BERT runs at **4.2 ms per clause on GPU (T4)** and **31.45 ms per clause on laptop CPU** (TF-IDF baseline: 1.99 ms). See [`docs/benchmark_report.md`](docs/benchmark_report.md), [`docs/model_card.md`](docs/model_card.md) and [`docs/error_analysis.md`](docs/error_analysis.md) for more detail.
+Macro F1 is reported because LEDGAR is highly imbalanced, and accuracy alone hides weak performance on rare clause types. Transformer inference achieves **4.2 ms per clause on GPU (T4)** and **31.45 ms per clause on laptop CPU** (TF-IDF baseline: 1.99 ms). See [`docs/benchmark_report.md`](docs/benchmark_report.md), [`docs/model_card.md`](docs/model_card.md) and [`docs/error_analysis.md`](docs/error_analysis.md) for more detail.
 
 ### Optional: transformer model
 

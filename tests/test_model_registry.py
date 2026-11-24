@@ -25,3 +25,27 @@ def test_local_model_loader_caches_by_resolved_path(monkeypatch, tmp_path: Path)
     assert first is second
     assert calls["count"] == 1
     registry.clear_model_cache()
+
+
+def test_load_legalpro_model_uses_env_or_default(monkeypatch) -> None:
+    calls = []
+
+    def fake_load_classifier(config_path: str, fallback_on_failure: bool):
+        calls.append(config_path)
+        return DummyModel()
+
+    monkeypatch.setattr("contract_risk_analyzer.modeling.legalpro.load_legalpro_classifier", fake_load_classifier)
+    registry.clear_model_cache()
+
+    monkeypatch.delenv("CONTRACT_RISK_MODEL_CONFIG", raising=False)
+    m1 = registry.load_legalpro_model()
+    assert m1 is not None
+    assert Path(calls[-1]) == Path("configs/ledgar_sra.yaml")
+
+    monkeypatch.setenv("CONTRACT_RISK_MODEL_CONFIG", "configs/legalpro.yaml")
+    registry.clear_model_cache()
+    m2 = registry.load_legalpro_model()
+    assert m2 is not None
+    assert Path(calls[-1]) == Path("configs/legalpro.yaml")
+    registry.clear_model_cache()
+

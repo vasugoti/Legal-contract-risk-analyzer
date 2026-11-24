@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from typing import Any
 from pydantic import BaseModel, Field
 
 from contract_risk_analyzer.data.schemas import RiskFlag, RiskReport, SearchResult

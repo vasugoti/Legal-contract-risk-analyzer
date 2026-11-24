@@ -77,7 +77,7 @@ def get_active_classifier() -> Any:
     if backend == "tfidf":
         target = _model_path() or "models/baseline_tfidf.joblib"
         return load_local_model(target)
-    target_cfg = _model_path() or "configs/legalpro.yaml"
+    target_cfg = _model_path() or os.getenv("CONTRACT_RISK_MODEL_CONFIG", "configs/ledgar_sra.yaml")
     return load_legalpro_model(target_cfg)
 
 
@@ -197,6 +197,8 @@ def search_similar(request: SearchRequest) -> SearchResponse:
 @router.get("/metrics", response_model=MetricsResponse)
 def service_metrics() -> MetricsResponse:
     backend = _classifier_backend()
+    if backend != "tfidf" and not _mock_mode():
+        get_active_classifier()
     status = get_model_runtime_status()
     fallback_active = status.fallback_active if backend == "legalpro" else False
     fallback_reason = status.fallback_reason if backend == "legalpro" else None
@@ -205,6 +207,7 @@ def service_metrics() -> MetricsResponse:
         active_backend=backend,
         fallback_active=fallback_active,
         fallback_reason=fallback_reason,
+        model_name=status.model_name,
     )
     return MetricsResponse(
         analyzed_clauses=metrics.analyzed_clauses,

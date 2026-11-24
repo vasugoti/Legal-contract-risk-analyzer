@@ -38,6 +38,9 @@ reports/*
 *.faiss
 *.index
 
+NLP/LEDGAR_SRA/*.safetensors
+NLP/LEDGAR_SRA/*.bin
+
 mlruns/
 wandb/
 runs/

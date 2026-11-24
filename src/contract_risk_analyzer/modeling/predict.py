@@ -63,8 +63,8 @@ def _resolve_classifier(
         target_path = model_path or "models/baseline_tfidf.joblib"
         return load_local_model(target_path)
 
-    # Default: LegalPro-BERT with self-check & fallback
-    config_path = model_path or "configs/legalpro.yaml"
+    # Default: fine-tuned classifier with self-check & fallback
+    config_path = model_path or os.getenv("CONTRACT_RISK_MODEL_CONFIG", "configs/ledgar_sra.yaml")
     return load_legalpro_model(config_path)
 
 

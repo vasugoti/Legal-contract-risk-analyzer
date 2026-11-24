@@ -1,0 +1,9 @@
+model:
+  model_path: NLP/LEDGAR_SRA
+  model_name: "LEDGAR-SRA (RoBERTa, fine-tuned on LEDGAR)"
+  max_length: 512
+  batch_size: 16
+  fallback_model_path: models/baseline_tfidf.joblib
+  self_check:
+    text: "This Agreement shall be governed by and construed in accordance with the laws of the State of Delaware, without giving effect to any principles of conflicts of law."
+    expected_label: "Governing Laws"

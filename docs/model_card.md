@@ -35,7 +35,9 @@ Supported metrics include accuracy, macro F1, micro F1, weighted F1, per-class p
 | Top-3 Accuracy | — | **95.82%** | — |
 | *Legal-BERT, LexGLUE paper (published)* | *micro-F1: 0.882* | *macro-F1: 0.830* | *Reference* |
 
-- Model Checkpoint: `AmitTewari/test_trainer` (LegalPro-BERT, pinned revision `3fadda4002fc230b2195e1fe4c499af158418838`, ~108M params, 413 MB)
+- Primary Model: `LEDGAR-SRA` (RoBERTa-base, 12 layers, 768 hidden, 100 classes, fine-tuned locally in `NLP/LEDGAR_SRA`, ≈498 MB, loaded offline with `local_files_only=True`).
+- Alternative Transformer: `AmitTewari/test_trainer` (LegalPro-BERT, pinned revision `3fadda4002fc230b2195e1fe4c499af158418838`, ~108M params, 413 MB).
+- Baseline Fallback: `models/baseline_tfidf.joblib` (TF-IDF + Logistic Regression).
 - Latency: 4.2 ms/clause on GPU (Tesla T4), 31.45 ms/clause on laptop CPU. Fallback to TF-IDF baseline supported.
 
 ## Limitations

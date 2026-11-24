@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
 from contract_risk_analyzer.modeling.baseline_tfidf import TfidfLogisticBaseline
+
+DEFAULT_MODEL_CONFIG = "configs/ledgar_sra.yaml"
 
 
 @lru_cache(maxsize=4)
@@ -27,10 +30,11 @@ def _load_legalpro_model_cached(config_path: str, fallback_on_failure: bool) -> 
 
 
 def load_legalpro_model(
-    config_path: str | Path = "configs/legalpro.yaml",
+    config_path: str | Path | None = None,
     fallback_on_failure: bool = True,
 ) -> Any:
-    resolved = str(Path(config_path).expanduser())
+    target_config = config_path or os.getenv("CONTRACT_RISK_MODEL_CONFIG", DEFAULT_MODEL_CONFIG)
+    resolved = str(Path(target_config).expanduser())
     return _load_legalpro_model_cached(resolved, fallback_on_failure)
 
 

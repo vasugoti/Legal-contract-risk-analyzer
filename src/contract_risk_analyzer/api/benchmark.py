@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -25,18 +26,46 @@ def build_benchmark_payload(
     active_backend: str,
     fallback_active: bool = False,
     fallback_reason: str | None = None,
+    model_name: str | None = None,
 ) -> dict[str, Any]:
     lp_data = load_json_file("reports/metrics_legalpro_test_trainer.json")
     tf_data = load_json_file("reports/metrics_tfidf.json")
+    sra_data = load_json_file("reports/metrics_ledgar_sra.json")
 
-    # Defaults if files missing
-    lp_acc = lp_data.get("accuracy", 0.8705)
-    lp_macro = lp_data.get("macro_f1", 0.8014)
-    lp_weighted = lp_data.get("weighted_f1", 0.8647)
-    lp_micro = lp_data.get("micro_f1", 0.8705)
-    lp_top3 = lp_data.get("top3_accuracy", 0.9582)
-    lp_gpu = lp_data.get("gpu_ms_per_clause_t4", 4.2)
-    lp_cpu = lp_data.get("cpu_ms_per_clause_laptop", 31.45)
+    effective_backend = "tfidf" if (active_backend == "tfidf" or fallback_active) else "legalpro"
+    active_cfg = os.getenv("CONTRACT_RISK_MODEL_CONFIG", "configs/ledgar_sra.yaml")
+    is_roberta = bool(
+        (model_name and ("roberta" in model_name.lower() or "sra" in model_name.lower()))
+        or ("ledgar_sra" in active_cfg.lower())
+    )
+
+    if effective_backend != "legalpro":
+        active_model_name = "TF-IDF + Logistic Regression"
+    elif is_roberta:
+        active_model_name = "LEDGAR-SRA (RoBERTa)"
+    else:
+        active_model_name = "LegalPro-BERT"
+
+    # Use LEDGAR-SRA metrics if roberta is active and sra_data is present
+    if is_roberta and sra_data:
+        lp_acc = sra_data.get("accuracy", 0.9283)
+        lp_macro = sra_data.get("macro_f1", 0.8819)
+        lp_weighted = sra_data.get("weighted_f1", 0.9283)
+        lp_micro = sra_data.get("micro_f1", 0.9283)
+        lp_top3 = sra_data.get("top3_accuracy", 0.9850)
+        lp_gpu = sra_data.get("gpu_ms_per_clause_t4", 3.8)
+        lp_cpu = sra_data.get("cpu_ms_per_clause_laptop", 31.45)
+        active_neural_data = sra_data
+    else:
+        # Defaults if files missing
+        lp_acc = lp_data.get("accuracy", 0.8705)
+        lp_macro = lp_data.get("macro_f1", 0.8014)
+        lp_weighted = lp_data.get("weighted_f1", 0.8647)
+        lp_micro = lp_data.get("micro_f1", 0.8705)
+        lp_top3 = lp_data.get("top3_accuracy", 0.9582)
+        lp_gpu = lp_data.get("gpu_ms_per_clause_t4", 4.2)
+        lp_cpu = lp_data.get("cpu_ms_per_clause_laptop", 31.45)
+        active_neural_data = lp_data
 
     tf_acc = tf_data.get("accuracy", 0.8307)
     tf_macro = tf_data.get("macro_f1", 0.7826)
@@ -44,9 +73,6 @@ def build_benchmark_payload(
     tf_micro = tf_data.get("micro_f1", 0.8307)
     tf_val_macro = tf_data.get("validation_macro_f1", 0.7737)
     tf_cpu = tf_data.get("cpu_ms_per_clause", 1.99)
-
-    effective_backend = "tfidf" if (active_backend == "tfidf" or fallback_active) else "legalpro"
-    active_model_name = "LegalPro-BERT" if effective_backend == "legalpro" else "TF-IDF + Logistic Regression"
 
     comparison_table = [
         {
@@ -89,12 +115,23 @@ def build_benchmark_payload(
     ]
 
     if effective_backend == "legalpro":
-        title = "LexGLUE LEDGAR Benchmark — Active model: LegalPro-BERT"
-        description = (
-            "BERT-base-cased fine-tuned on the LexGLUE LEDGAR contract provision dataset "
-            "(60,000 training provisions, 100 clause categories). Checkpoint AmitTewari/test_trainer "
-            "(LegalPro-BERT, Tewari 2024), pinned revision 3fadda4."
-        )
+        title = f"LexGLUE LEDGAR Benchmark — Active model: {active_model_name}"
+        if is_roberta:
+            description = (
+                "RoBERTa-base fine-tuned on the LexGLUE LEDGAR contract provision dataset "
+                "(60,000 training provisions, 100 clause categories). Stored locally in NLP/LEDGAR_SRA."
+            )
+            checkpoint_val = "NLP/LEDGAR_SRA (≈498 MB, local safetensors)"
+            arch_val = "RoBERTa-base (12 layers, 768 hidden, ~125M params) + 100-class classification head"
+        else:
+            description = (
+                "BERT-base-cased fine-tuned on the LexGLUE LEDGAR contract provision dataset "
+                "(60,000 training provisions, 100 clause categories). Checkpoint AmitTewari/test_trainer "
+                "(LegalPro-BERT, Tewari 2024), pinned revision 3fadda4."
+            )
+            checkpoint_val = "AmitTewari/test_trainer @ 3fadda4 (≈413 MB, Apache-2.0)"
+            arch_val = "BERT-base-cased (12 layers, 768 hidden, ~108M params) + 100-class classification head"
+
         badge = "Evaluated on 10,000 test provisions"
         cards = [
             {"label": "Test Accuracy", "value": f"{lp_acc * 100:.2f}%", "sub": "Overall classification rate"},
@@ -105,7 +142,7 @@ def build_benchmark_payload(
         specs = [
             {
                 "label": "Model Architecture",
-                "value": "BERT-base-cased (12 layers, 768 hidden, ~108M params) + 100-class classification head",
+                "value": arch_val,
             },
             {
                 "label": "Training Dataset",
@@ -113,7 +150,7 @@ def build_benchmark_payload(
             },
             {
                 "label": "Model Checkpoint",
-                "value": "AmitTewari/test_trainer @ 3fadda4 (≈413 MB, Apache-2.0)",
+                "value": checkpoint_val,
             },
             {
                 "label": "Inference Latency",
@@ -181,6 +218,6 @@ def build_benchmark_payload(
         "specs": specs,
         "fallback_active": fallback_active,
         "fallback_reason": fallback_reason,
-        "active_metrics": lp_data if effective_backend == "legalpro" else tf_data,
+        "active_metrics": active_neural_data if effective_backend == "legalpro" else tf_data,
         "baseline_metrics": tf_data,
     }

@@ -124,7 +124,7 @@ document.addEventListener("DOMContentLoaded", () => {
           modelBadge.title = `Fallback active: ${systemInfo.fallback_reason}`;
         }
         modelBadge.textContent = "Model: " + modelLabel;
-        clauseModelTag.textContent = "Model: " + (systemInfo.model_name || "LegalPro-BERT");
+        clauseModelTag.textContent = "Model: " + (systemInfo.model_name || "Trained Model");
 
         if (systemInfo.disclaimer) {
           disclaimerText.textContent = systemInfo.disclaimer;
@@ -197,9 +197,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Highlight active column in comparison table
         const isLegalProActive = bm.effective_backend === "legalpro";
+        const colLabel = (bm.active_model_name && bm.active_model_name.includes("RoBERTa")) ? "LEDGAR-SRA" : "LegalPro-BERT";
         if (bmColLegalPro) {
           bmColLegalPro.className = isLegalProActive ? "table-col-active" : "";
-          bmColLegalPro.innerHTML = `LegalPro-BERT ${isLegalProActive ? '<span class="meta-tag" style="font-size:10px;padding:1px 4px;margin-left:4px;color:var(--primary);border-color:var(--primary);">ACTIVE</span>' : ''}`;
+          bmColLegalPro.innerHTML = `${colLabel} ${isLegalProActive ? '<span class="meta-tag" style="font-size:10px;padding:1px 4px;margin-left:4px;color:var(--primary);border-color:var(--primary);">ACTIVE</span>' : ''}`;
         }
         if (bmColTfidf) {
           bmColTfidf.className = !isLegalProActive ? "table-col-active" : "";

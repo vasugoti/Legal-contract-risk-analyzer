@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -116,3 +117,37 @@ def test_ledgar_labels_match_lexglue_dataset() -> None:
     assert dataset_names == LEDGAR_LABELS
     for idx, name in enumerate(dataset_names):
         assert ID_TO_LABEL[idx] == name
+
+
+def test_ledgar_sra_config() -> None:
+    cfg = load_yaml("configs/ledgar_sra.yaml")
+    assert cfg["model"]["model_path"] == "NLP/LEDGAR_SRA"
+    assert cfg["model"]["max_length"] == 512
+    assert cfg["model"]["self_check"]["expected_label"] == "Governing Laws"
+
+
+def test_local_model_path_mocked(monkeypatch) -> None:
+    with patch("contract_risk_analyzer.modeling.legalpro.AutoTokenizer.from_pretrained"), \
+         patch("contract_risk_analyzer.modeling.legalpro.AutoModelForSequenceClassification.from_pretrained") as mock_mod:
+        mock_cfg = MagicMock()
+        mock_cfg.num_labels = 100
+        mock_cfg.id2label = {i: f"CustomLabel_{i}" for i in range(100)}
+        mock_mod.return_value.config = mock_cfg
+
+        clf = LegalProClassifier(model_path="NLP/LEDGAR_SRA")
+        assert clf.id2label[0] == "CustomLabel_0"
+        assert clf.id2label[47] == "CustomLabel_47"
+        assert clf.model_id == "NLP/LEDGAR_SRA"
+
+
+HAS_LEDGAR_SRA_WEIGHTS = (
+    Path("NLP/LEDGAR_SRA/model.safetensors").exists()
+    or Path("NLP/LEDGAR_SRA/pytorch_model.bin").exists()
+)
+
+
+@pytest.mark.skipif(not HAS_LEDGAR_SRA_WEIGHTS, reason="NLP/LEDGAR_SRA weights not present")
+def test_real_ledgar_sra_self_check() -> None:
+    clf = LegalProClassifier(model_path="NLP/LEDGAR_SRA")
+    assert clf.self_check() is True
+

@@ -10,7 +10,7 @@ import numpy as np
 import torch
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
-from contract_risk_analyzer.config.settings import load_yaml
+from contract_risk_analyzer.config.settings import load_yaml, resolve_path
 from contract_risk_analyzer.data.schemas import ClausePrediction
 from contract_risk_analyzer.modeling.ledgar_labels import ID_TO_LABEL, LABEL_TO_ID, LEDGAR_LABELS
 
@@ -47,22 +47,31 @@ def get_model_runtime_status() -> ModelRuntimeStatus:
 
 
 class LegalProClassifier:
-    """LegalPro-BERT sequence classifier for LEDGAR 100 contract clause categories."""
+    """Sequence classifier for LEDGAR 100 contract clause categories (supports local folder or Hugging Face)."""
 
     def __init__(
         self,
         model_id: str | None = None,
+        model_path: str | Path | None = None,
+        model_name: str | None = None,
         revision: str | None = None,
         max_length: int = 512,
         batch_size: int = 16,
         device: str | None = None,
         local_files_only: bool = False,
     ) -> None:
-        self.model_id = os.getenv("CONTRACT_RISK_MODEL_ID") or model_id or DEFAULT_MODEL_ID
-        self.revision = revision or DEFAULT_REVISION
+        self.model_path = resolve_path(model_path) if model_path else None
+        if self.model_path is not None:
+            self.model_id = str(model_path)
+            self.revision = None
+            self.model_name = model_name or "LEDGAR-SRA (RoBERTa, fine-tuned on LEDGAR)"
+        else:
+            self.model_id = os.getenv("CONTRACT_RISK_MODEL_ID") or model_id or DEFAULT_MODEL_ID
+            self.revision = revision or DEFAULT_REVISION
+            self.model_name = model_name or f"LegalPro-BERT ({self.model_id})"
+
         self.max_length = max_length
         self.batch_size = batch_size
-        self.model_name = f"LegalPro-BERT ({self.model_id})"
 
         if device is not None:
             self.device = torch.device(device)
@@ -73,14 +82,31 @@ class LegalProClassifier:
         self.model.to(self.device)
         self.model.eval()
 
-        self.id2label = dict(ID_TO_LABEL)
-        self.label2id = dict(LABEL_TO_ID)
-        self._classes = np.array(LEDGAR_LABELS)
+        if hasattr(self.model.config, "id2label") and self.model.config.id2label:
+            sample_val = next(iter(self.model.config.id2label.values()), "")
+            if not str(sample_val).startswith("LABEL_"):
+                self.id2label = {int(k): v for k, v in self.model.config.id2label.items()}
+                self.label2id = {v: int(k) for k, v in self.id2label.items()}
+                self._classes = np.array([self.id2label.get(i, f"LABEL_{i}") for i in range(len(self.id2label))])
+            else:
+                self.id2label = dict(ID_TO_LABEL)
+                self.label2id = dict(LABEL_TO_ID)
+                self._classes = np.array(LEDGAR_LABELS)
+        else:
+            self.id2label = dict(ID_TO_LABEL)
+            self.label2id = dict(LABEL_TO_ID)
+            self._classes = np.array(LEDGAR_LABELS)
 
     def _load_model_and_tokenizer(
         self, local_files_only: bool = False
     ) -> tuple[Any, Any]:
         """Load tokenizer and model with automatic local/offline fallback."""
+        if self.model_path is not None:
+            load_target = str(self.model_path)
+            tokenizer = AutoTokenizer.from_pretrained(load_target, local_files_only=True)
+            model = AutoModelForSequenceClassification.from_pretrained(load_target, local_files_only=True)
+            return tokenizer, model
+
         kwargs: dict[str, Any] = {"revision": self.revision}
         if local_files_only or os.getenv("HF_HUB_OFFLINE") == "1":
             kwargs["local_files_only"] = True
@@ -115,10 +141,10 @@ class LegalProClassifier:
 
     def predict_proba(self, texts: list[str]) -> np.ndarray:
         if not texts:
-            return np.empty((0, len(LEDGAR_LABELS)))
+            return np.empty((0, len(self._classes)))
 
         all_probs: list[np.ndarray] = []
-        with torch.inference_mode():
+        with torch.no_grad():
             for i in range(0, len(texts), self.batch_size):
                 batch_texts = texts[i : i + self.batch_size]
                 inputs = self.tokenizer(
@@ -183,14 +209,18 @@ def load_legalpro_classifier(
     config_path: str | Path = "configs/legalpro.yaml",
     fallback_on_failure: bool = True,
 ) -> Any:
-    """Load LegalProClassifier with startup self-check and TF-IDF fallback."""
-    cfg_file = Path(config_path)
+    """Load classifier with startup self-check and TF-IDF fallback."""
+    cfg_file = resolve_path(config_path)
     cfg: dict[str, Any] = {}
     if cfg_file.exists():
         cfg = load_yaml(cfg_file).get("model", {})
 
-    model_id = os.getenv("CONTRACT_RISK_MODEL_ID") or cfg.get("model_id", DEFAULT_MODEL_ID)
-    revision = cfg.get("revision", DEFAULT_REVISION)
+    model_path = cfg.get("model_path")
+    model_name = cfg.get("model_name")
+    model_id = os.getenv("CONTRACT_RISK_MODEL_ID") or cfg.get("model_id")
+    if not model_path and not model_id:
+        model_id = DEFAULT_MODEL_ID
+    revision = cfg.get("revision", DEFAULT_REVISION if not model_path else None)
     max_length = int(cfg.get("max_length", 512))
     batch_size = int(cfg.get("batch_size", 16))
     fallback_path = cfg.get("fallback_model_path", "models/baseline_tfidf.joblib")
@@ -199,21 +229,25 @@ def load_legalpro_classifier(
     check_text = self_check_cfg.get("text", DEFAULT_SELF_CHECK_TEXT)
     expected_label = self_check_cfg.get("expected_label", DEFAULT_SELF_CHECK_EXPECTED)
 
+    target_desc = str(model_path) if model_path else str(model_id)
+
     try:
         classifier = LegalProClassifier(
             model_id=model_id,
+            model_path=model_path,
+            model_name=model_name,
             revision=revision,
             max_length=max_length,
             batch_size=batch_size,
         )
         passed = classifier.self_check(text=check_text, expected_label=expected_label)
         if passed:
-            logger.info("LegalPro startup self-check passed: '%s'.", expected_label)
+            logger.info("Classifier startup self-check passed: '%s'.", expected_label)
             _RUNTIME_STATUS.active_backend = "legalpro"
             _RUNTIME_STATUS.model_name = classifier.model_name
-            _RUNTIME_STATUS.model_id = classifier.model_id
+            _RUNTIME_STATUS.model_id = str(model_path) if model_path else classifier.model_id
             _RUNTIME_STATUS.revision = classifier.revision
-            _RUNTIME_STATUS.num_labels = 100
+            _RUNTIME_STATUS.num_labels = len(classifier.id2label)
             _RUNTIME_STATUS.max_length = classifier.max_length
             _RUNTIME_STATUS.fallback_active = False
             _RUNTIME_STATUS.fallback_reason = None
@@ -222,17 +256,17 @@ def load_legalpro_classifier(
 
         reason = f"Self-check expected '{expected_label}' but prediction did not match."
         logger.warning(
-            "LegalPro startup self-check failed for model '%s': %s "
+            "Classifier startup self-check failed for model '%s': %s "
             "Falling back to TF-IDF baseline at '%s'.",
-            model_id,
+            target_desc,
             reason,
             fallback_path,
         )
     except Exception as exc:
         reason = f"Model load error: {exc}"
         logger.warning(
-            "LegalPro model '%s' failed to load (%s). Falling back to TF-IDF baseline at '%s'.",
-            model_id,
+            "Classifier model '%s' failed to load (%s). Falling back to TF-IDF baseline at '%s'.",
+            target_desc,
             exc,
             fallback_path,
         )
