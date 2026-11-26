@@ -864,7 +864,7 @@
     const rows = b.comparison_table || [];
     $("bm-comparison-tbody").innerHTML = rows.length ? rows.map((r) => {
       const ch = String(r.change ?? "");
-      const cls = /^\+/.test(ch) ? "up" : /^-/.test(ch) ? "down" : "";
+      const cls = /^\+/.test(ch) ? "up" : /^[-\u2212]/.test(ch) ? "down" : "";
       return `<tr class="${r.is_reference ? "is-ref" : ""}"><td>${esc(r.metric)}</td><td>${esc(r.tfidf)}</td><td><b>${esc(r.legalpro)}</b></td><td class="${cls}">${esc(ch)}</td></tr>`;
     }).join("") : `<tr><td colspan="4" class="muted">No comparison data.</td></tr>`;
 

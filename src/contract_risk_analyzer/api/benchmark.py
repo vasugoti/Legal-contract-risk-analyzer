@@ -74,30 +74,40 @@ def build_benchmark_payload(
     tf_val_macro = tf_data.get("validation_macro_f1", 0.7737)
     tf_cpu = tf_data.get("cpu_ms_per_clause", 1.99)
 
+    def format_diff(delta_pts: float, unit: str = "pts") -> str:
+        if delta_pts < 0:
+            return f"\u2212{abs(delta_pts):.2f} {unit} lower"
+        return f"+{delta_pts:.2f} {unit}"
+
+    acc_diff = (lp_acc - tf_acc) * 100.0
+    macro_diff = (lp_macro - tf_macro) * 100.0
+    weighted_diff = (lp_weighted - tf_weighted) * 100.0
+    micro_diff = (lp_micro - tf_micro) * 100.0
+
     comparison_table = [
         {
             "metric": "Test Accuracy",
             "tfidf": f"{tf_acc * 100:.2f}%",
             "legalpro": f"{lp_acc * 100:.2f}%",
-            "change": f"+{(lp_acc - tf_acc) * 100:.2f} pts",
+            "change": format_diff(acc_diff),
         },
         {
             "metric": "Test Macro F1",
             "tfidf": f"{tf_macro:.4f}",
             "legalpro": f"{lp_macro:.4f}",
-            "change": f"+{(lp_macro - tf_macro) * 100:.2f} pts",
+            "change": format_diff(macro_diff),
         },
         {
             "metric": "Test Weighted F1",
             "tfidf": f"{tf_weighted:.4f}",
             "legalpro": f"{lp_weighted:.4f}",
-            "change": f"+{(lp_weighted - tf_weighted) * 100:.2f} pts",
+            "change": format_diff(weighted_diff),
         },
         {
             "metric": "Test Micro F1",
             "tfidf": f"{tf_micro:.4f}",
             "legalpro": f"{lp_micro:.4f}",
-            "change": f"+{(lp_micro - tf_micro) * 100:.2f} pts",
+            "change": format_diff(micro_diff),
         },
         {
             "metric": "Top-3 Accuracy",
@@ -106,7 +116,7 @@ def build_benchmark_payload(
             "change": "—",
         },
         {
-            "metric": "Notebook (label-guided SRA, not comparable)",
+            "metric": "Training notebook (LEDGAR-SRA)",
             "tfidf": "—",
             "legalpro": f"acc: {sra_data.get('notebook_accuracy', 0.9283)*100:.2f}% | macro-F1: {sra_data.get('notebook_macro_f1', 0.8819):.4f}" if is_roberta else "—",
             "change": "Reference",
@@ -114,8 +124,8 @@ def build_benchmark_payload(
         },
         {
             "metric": "Legal-BERT, LexGLUE paper (published)",
-            "tfidf": "micro-F1: 0.882",
-            "legalpro": "macro-F1: 0.830",
+            "tfidf": "—",
+            "legalpro": "micro-F1 0.882 · macro-F1 0.830",
             "change": "Reference",
             "is_reference": True,
         },
@@ -140,12 +150,36 @@ def build_benchmark_payload(
             arch_val = "BERT-base-cased (12 layers, 768 hidden, ~108M params) + 100-class classification head"
 
         badge = "Evaluated on 10,000 test provisions"
-        cards = [
-            {"label": "Test Accuracy", "value": f"{lp_acc * 100:.2f}%", "sub": "Overall classification rate"},
-            {"label": "Test Macro F1", "value": f"{lp_macro:.4f}", "sub": "Unweighted average across 100 classes"},
-            {"label": "Test Weighted F1", "value": f"{lp_weighted:.4f}", "sub": "Class-size weighted F1 score"},
-            {"label": "Top-3 Accuracy", "value": f"{lp_top3 * 100:.2f}%", "sub": "Top-3 candidate label hit rate"},
-        ]
+        if is_roberta and sra_data:
+            cards = [
+                {
+                    "label": "Notebook accuracy",
+                    "value": f"{sra_data.get('notebook_accuracy', 0.9283) * 100:.2f}%",
+                    "sub": "Training notebook, LEDGAR test split",
+                },
+                {
+                    "label": "Notebook macro-F1",
+                    "value": f"{sra_data.get('notebook_macro_f1', 0.8819):.4f}",
+                    "sub": "Training notebook",
+                },
+                {
+                    "label": "Test accuracy",
+                    "value": f"{sra_data.get('accuracy', 0.6550) * 100:.2f}%",
+                    "sub": "Deployed ONNX model, raw clauses",
+                },
+                {
+                    "label": "Top-3 accuracy",
+                    "value": f"{sra_data.get('top3_accuracy', 0.8520) * 100:.2f}%",
+                    "sub": "Correct label in top 3 guesses",
+                },
+            ]
+        else:
+            cards = [
+                {"label": "Test Accuracy", "value": f"{lp_acc * 100:.2f}%", "sub": "Overall classification rate"},
+                {"label": "Test Macro F1", "value": f"{lp_macro:.4f}", "sub": "Unweighted average across 100 classes"},
+                {"label": "Test Weighted F1", "value": f"{lp_weighted:.4f}", "sub": "Class-size weighted F1 score"},
+                {"label": "Top-3 Accuracy", "value": f"{lp_top3 * 100:.2f}%", "sub": "Top-3 candidate label hit rate"},
+            ]
         specs = [
             {
                 "label": "Model Architecture",
