@@ -71,15 +71,21 @@
     api(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
 
   // ------------------------------------------------------------------
-  // Theme
+  // Soft press effect on buttons
   // ------------------------------------------------------------------
-  function applyTheme(t) { document.documentElement.dataset.theme = t; }
-  const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-  applyTheme(store.get("cra-theme", prefersDark ? "dark" : "light"));
-  $("theme-toggle").addEventListener("click", () => {
-    const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
-    applyTheme(next);
-    store.set("cra-theme", next);
+  const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  document.addEventListener("pointerdown", (e) => {
+    const btn = e.target.closest(".btn");
+    if (!btn || reduceMotion) return;
+    const rect = btn.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height) * 2.2;
+    const r = document.createElement("span");
+    r.className = "ripple";
+    r.style.width = r.style.height = `${size}px`;
+    r.style.left = `${e.clientX - rect.left - size / 2}px`;
+    r.style.top = `${e.clientY - rect.top - size / 2}px`;
+    btn.appendChild(r);
+    setTimeout(() => r.remove(), 750);
   });
 
   // ------------------------------------------------------------------
@@ -115,8 +121,8 @@
   async function initSystem() {
     const dot = $("status-dot"), txt = $("status-text"), badge = $("model-badge");
     const [health, info] = await Promise.allSettled([api("/health"), api("/model/info")]);
-    if (health.status === "fulfilled") { dot.className = "dot is-ok"; txt.textContent = "API online"; }
-    else { dot.className = "dot is-bad"; txt.textContent = "API offline"; }
+    if (health.status === "fulfilled") { dot.className = "dot is-ok"; txt.textContent = "Online"; }
+    else { dot.className = "dot is-bad"; txt.textContent = "Offline"; }
 
     if (info.status === "fulfilled" && info.value) {
       const m = info.value;
@@ -227,7 +233,7 @@
       $("doc-id-input").value = s.id;
       updateCount();
       setUpload("", "");
-      toast("Sample loaded. Press Analyze contract.");
+      toast("Sample loaded");
     })
   );
 
@@ -331,17 +337,17 @@
     const lvlKey = level.toLowerCase();
 
     // gauge
-    const meter = $("doc-risk-meter");
-    const len = meter.getTotalLength ? meter.getTotalLength() : 251;
-    meter.style.strokeDasharray = `${len}`;
-    meter.style.strokeDashoffset = `${len}`;
-    meter.style.stroke = r.risk_color || `var(${sevColorVar(lvlKey)})`;
-    requestAnimationFrame(() => requestAnimationFrame(() => { meter.style.strokeDashoffset = `${len * (1 - score / 100)}`; }));
+    const fill = $("doc-risk-meter"), mark = $("doc-risk-mark");
+    fill.style.transition = mark.style.transition = "none";
+    fill.style.width = "0%"; mark.style.left = "0%";
+    void fill.offsetWidth;
+    fill.style.transition = mark.style.transition = "";
+    requestAnimationFrame(() => { fill.style.width = `${score}%`; mark.style.left = `${score}%`; });
     animateNumber($("doc-risk-score"), score);
 
     const pill = $("doc-risk-level");
     pill.textContent = `${level} risk`;
-    pill.className = `level-pill level-${lvlKey}`;
+    pill.className = `level level-${lvlKey}`;
 
     $("doc-report-id").textContent = `Report · ${r.document_id || "document"}`;
     $("doc-risk-action").textContent = r.risk_action || band.action;
@@ -363,7 +369,7 @@
     // flags
     flagFilter = { sev: "all", q: "", limit: 25 };
     $("flag-search").value = "";
-    $$("#severity-filter .chip").forEach((c) => c.classList.toggle("is-on", c.dataset.sev === "all"));
+    $$("#severity-filter .filter").forEach((c) => c.classList.toggle("is-on", c.dataset.sev === "all"));
     renderFlags();
 
     // recommendations
@@ -400,17 +406,18 @@
   function renderTopRisks(cats) {
     const el = $("top-risks");
     $("top-risks-card").hidden = cats.length === 0;
-    el.innerHTML = cats.slice(0, 6).map((c) => `
+    const roman = ["i", "ii", "iii", "iv", "v", "vi", "vii", "viii"];
+    el.innerHTML = cats.slice(0, 8).map((c, i) => `
       <button class="risk-tile" type="button" data-type="${esc(c.type)}" style="--sev: var(${sevColorVar(c.severity)})">
+        <span class="num">${roman[i]}</span>
+        <span><strong>${esc(c.title)}</strong><span class="meta">${c.clauses} clause${c.clauses === 1 ? "" : "s"}${c.points ? ` · ${c.points.toFixed(1)} points` : ""}</span></span>
         <span class="sevtxt">${esc(c.severity)}</span>
-        <strong>${esc(c.title)}</strong>
-        <span class="meta"><span>${c.clauses} clause${c.clauses === 1 ? "" : "s"}</span>${c.points ? `<span>${c.points.toFixed(1)} pts</span>` : ""}</span>
       </button>`).join("");
     $$(".risk-tile", el).forEach((b) => b.addEventListener("click", () => {
       $("flag-search").value = b.dataset.type;
       flagFilter.q = b.dataset.type.toLowerCase();
       flagFilter.sev = "all";
-      $$("#severity-filter .chip").forEach((c) => c.classList.toggle("is-on", c.dataset.sev === "all"));
+      $$("#severity-filter .filter").forEach((c) => c.classList.toggle("is-on", c.dataset.sev === "all"));
       renderFlags();
       $("flags-table-body").scrollIntoView({ behavior: "smooth", block: "center" });
     }));
@@ -438,7 +445,7 @@
         </summary>
         <div class="flag-body">
           ${evidence ? `<div class="evidence">${evHTML}</div>` : ""}
-          ${rec ? `<div class="rec"><b>Suggested fix</b><span>${esc(rec)}</span></div>` : ""}
+          ${rec ? `<div class="rec"><b>Recommendation</b><span>${esc(rec)}</span></div>` : ""}
           <div class="flag-meta">${esc(f.flag_type || "")}${f.clause_id != null ? " · clause " + esc(f.clause_id) : ""}${conf}</div>
         </div>
       </details>`;
@@ -465,10 +472,10 @@
     if (more) more.addEventListener("click", () => { flagFilter.limit += 25; renderFlags(); });
   }
 
-  $$("#severity-filter .chip").forEach((c) => c.addEventListener("click", () => {
+  $$("#severity-filter .filter").forEach((c) => c.addEventListener("click", () => {
     flagFilter.sev = c.dataset.sev;
     flagFilter.limit = 25;
-    $$("#severity-filter .chip").forEach((x) => x.classList.toggle("is-on", x === c));
+    $$("#severity-filter .filter").forEach((x) => x.classList.toggle("is-on", x === c));
     renderFlags();
   }));
   let searchTimer;
@@ -613,8 +620,8 @@
     const when = (analyzedAt || new Date()).toLocaleString(undefined, { dateStyle: "long", timeStyle: "short" });
     const tax = Object.entries(r.predicted_clause_types || {}).filter(([, v]) => num(v) > 0).sort((a, b) => b[1] - a[1]);
     const recs = r.recommendations || [];
-    const C = { critical: "#b42318", high: "#c2410c", medium: "#a16207", low: "#2f6f4f" };
-    const BG = { critical: "#fbe9e7", high: "#fdeee3", medium: "#fbf3dc", low: "#e6f2ea" };
+    const C = { critical: "#7a3520", high: "#9c5123", medium: "#96722d", low: "#5c6e4e" };
+    const BG = { critical: "#f2e7db", high: "#f5ece2", medium: "#f5f0e3", low: "#ecefe6" };
     const lvlColor = C[lvl] || "#1f2a44";
     const badge = (s) => `<span class="badge" style="background:${BG[s]};color:${C[s]}">${esc(s.toUpperCase())}</span>`;
 
@@ -641,41 +648,41 @@
     const css = `
       @page { size: A4; margin: 16mm 15mm 18mm; }
       @page { @bottom-right { content: "Page " counter(page) " of " counter(pages); font: 9pt Arial, sans-serif; color: #777; } }
-      body { font-family: "Segoe UI", Arial, Helvetica, sans-serif; color: #1d2640; font-size: 10.5pt; line-height: 1.5; margin: 0; ${forWord ? "" : "max-width: 820px; margin: 0 auto; padding: 28px;"} }
-      h1 { font-family: Georgia, "Times New Roman", serif; font-size: 22pt; margin: 0 0 2px; color: #1d2640; }
-      h2 { font-family: Georgia, "Times New Roman", serif; font-size: 14pt; margin: 22px 0 8px; padding-bottom: 4px; border-bottom: 2px solid #1d2640; color: #1d2640; page-break-after: avoid; }
+      body { font-family: "IBM Plex Sans", "Segoe UI", Arial, sans-serif; color: #2b1f17; font-size: 10.5pt; line-height: 1.5; margin: 0; ${forWord ? "" : "max-width: 820px; margin: 0 auto; padding: 28px;"} }
+      h1 { font-family: "Source Serif 4", Cambria, Georgia, serif; font-size: 22pt; margin: 0 0 2px; color: #2b1f17; }
+      h2 { font-family: "Source Serif 4", Cambria, Georgia, serif; font-size: 14pt; margin: 22px 0 8px; padding-bottom: 4px; border-bottom: 2px solid #2b1f17; color: #2b1f17; page-break-after: avoid; }
       h3 { font-size: 11pt; margin: 0; }
       p { margin: 4px 0; }
       .sub { color: #666; margin: 0 0 14px; }
       table { border-collapse: collapse; width: 100%; }
-      .grid td, .grid th { border: 1px solid #ddd5c8; padding: 6px 9px; text-align: left; vertical-align: top; font-size: 10pt; }
-      .grid th { background: #f5f1ea; font-size: 9pt; text-transform: uppercase; letter-spacing: .04em; color: #3a4360; }
+      .grid td, .grid th { border: 1px solid #e3d7c4; padding: 6px 9px; text-align: left; vertical-align: top; font-size: 10pt; }
+      .grid th { background: #f8f3eb; font-size: 9pt; text-transform: uppercase; letter-spacing: .04em; color: #5b4738; }
       .plain td { padding: 0; border: 0; vertical-align: middle; }
       .right { text-align: right; }
       .meta-table td { padding: 3px 12px 3px 0; font-size: 9.5pt; color: #444; border: 0; }
-      .scorebox { border: 1px solid #ddd5c8; background: #fbf8f3; padding: 14px 16px; margin: 8px 0 4px; }
-      .score { font-family: Georgia, serif; font-size: 30pt; font-weight: bold; color: ${lvlColor}; }
+      .scorebox { border: 1px solid #e3d7c4; background: #fbf7f0; padding: 14px 16px; margin: 8px 0 4px; }
+      .score { font-family: "Source Serif 4", Cambria, Georgia, serif; font-size: 30pt; font-weight: bold; color: ${lvlColor}; }
       .score small { font-size: 11pt; color: #777; font-weight: normal; }
       .level { font-size: 13pt; font-weight: bold; color: ${lvlColor}; }
-      .bar { height: 10px; background: #ece6db; margin: 8px 0 4px; }
+      .bar { height: 10px; background: #ebe2d4; margin: 8px 0 4px; }
       .bar div { height: 10px; background: ${lvlColor}; width: ${score}%; }
       .scale { font-size: 8pt; color: #888; }
       .badge { display: inline-block; padding: 2px 8px; font-size: 8pt; font-weight: bold; letter-spacing: .05em; border-radius: 4px; }
-      .finding { border: 1px solid #e5ddd0; border-left: 4px solid #999; padding: 10px 12px; margin: 0 0 10px; page-break-inside: avoid; }
+      .finding { border: 1px solid #ebe2d4; border-left: 4px solid #999; padding: 10px 12px; margin: 0 0 10px; page-break-inside: avoid; }
       .finding .meta { font-size: 8.5pt; color: #777; font-family: Consolas, "Courier New", monospace; }
-      .quote { font-family: Georgia, serif; background: #f7f3ec; border-left: 3px solid #d8cebd; padding: 7px 10px; margin: 6px 0; color: #3a4360; }
-      mark { background: #f3d9a8; color: inherit; }
-      .fix { background: #e6f2ea; padding: 6px 9px; margin-top: 6px; }
+      .quote { font-family: "Source Serif 4", Cambria, Georgia, serif; background: #f8f3eb; border-left: 3px solid #8b6a48; padding: 7px 10px; margin: 6px 0; color: #5b4738; }
+      mark { background: #efe2cc; color: inherit; }
+      .fix { background: #f8f3eb; border-left: 2px solid #8b6a48; padding: 6px 9px; margin-top: 6px; }
       ol li, ul li { margin-bottom: 4px; }
-      .contract { white-space: pre-wrap; font-family: Georgia, serif; font-size: 9.5pt; line-height: 1.55; border: 1px solid #e5ddd0; padding: 12px; background: #fcfaf6; }
-      .disclaimer { margin-top: 22px; padding: 10px 12px; border: 1px solid #e5ddd0; font-size: 9pt; color: #555; background: #fbf8f3; }
+      .contract { white-space: pre-wrap; font-family: "Source Serif 4", Cambria, Georgia, serif; font-size: 9.5pt; line-height: 1.55; border: 1px solid #ebe2d4; padding: 12px; background: #fdfbf7; }
+      .disclaimer { margin-top: 22px; padding: 10px 12px; border: 1px solid #ebe2d4; font-size: 9pt; color: #555; background: #fbf7f0; }
       .page-break { page-break-before: always; }
       .muted { color: #777; }
       @media print { body { padding: 0; max-width: none; } a { color: inherit; text-decoration: none; } }`;
 
     const head = forWord
       ? `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>${esc(r.document_id || "Contract")} — Risk Report</title><!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]--><style>${css}</style></head>`
-      : `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(r.document_id || "Contract")} — Risk Report</title><style>${css}</style></head>`;
+      : `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(r.document_id || "Contract")} — Risk Report</title><link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet"><style>${css}</style></head>`;
 
     return `${head}<body>
       <h1>Contract Risk Analysis Report</h1>
