@@ -19,9 +19,9 @@ from contract_risk_analyzer.api.schemas import (
 )
 from contract_risk_analyzer.config.settings import load_yaml, resolve_path
 from contract_risk_analyzer.data.schemas import Clause
-from contract_risk_analyzer.modeling.legalpro import get_model_runtime_status
+from contract_risk_analyzer.modeling.status import get_model_runtime_status
 from contract_risk_analyzer.modeling.predict import analyze_document_text, predict_clauses
-from contract_risk_analyzer.modeling.registry import load_legalpro_model, load_local_model
+from contract_risk_analyzer.modeling.registry import load_legalpro_model, load_local_model, load_onnx_model
 from contract_risk_analyzer.retrieval.index import build_clause_index
 from contract_risk_analyzer.retrieval.search import search_index
 from contract_risk_analyzer.risk.rules import detect_risk_flags
@@ -53,7 +53,10 @@ def _mock_mode() -> bool:
 
 
 def _classifier_backend() -> str:
-    return os.getenv("CONTRACT_RISK_CLASSIFIER", "legalpro").strip().lower()
+    return (
+        os.getenv("CONTRACT_RISK_BACKEND")
+        or os.getenv("CONTRACT_RISK_CLASSIFIER", "legalpro")
+    ).strip().lower()
 
 
 def _model_path() -> str | None:
@@ -74,6 +77,9 @@ def get_active_classifier() -> Any:
     if _mock_mode():
         return None
     backend = _classifier_backend()
+    if backend == "onnx":
+        target = _model_path() or os.getenv("CONTRACT_RISK_ONNX_DIR", "NLP/LEDGAR_SRA_ONNX")
+        return load_onnx_model(target)
     if backend == "tfidf":
         target = _model_path() or "models/baseline_tfidf.joblib"
         return load_local_model(target)
@@ -184,12 +190,20 @@ def analyze_document(request: DocumentAnalyzeRequest):
 @router.post("/search/similar", response_model=SearchResponse)
 def search_similar(request: SearchRequest) -> SearchResponse:
     start = time.perf_counter()
-    index_path = os.getenv("CONTRACT_RISK_RETRIEVAL_INDEX", "models/retrieval")
-    results = search_index(index_path, request.query, top_k=request.top_k)
-    if not results:
-        records = read_jsonl(resolve_path("data/samples/sample_clauses.jsonl"))
-        index = build_clause_index(records)
-        results = index.search(request.query, top_k=request.top_k)
+    results = []
+    try:
+        index_path = os.getenv("CONTRACT_RISK_RETRIEVAL_INDEX", "models/retrieval")
+        results = search_index(index_path, request.query, top_k=request.top_k)
+        if not results:
+            sample_file = resolve_path("data/samples/sample_clauses.jsonl")
+            if sample_file.exists():
+                records = read_jsonl(sample_file)
+                index = build_clause_index(records)
+                results = index.search(request.query, top_k=request.top_k)
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).warning("Similarity search unavailable or skipped: %s", exc)
+        results = []
     _record_latency(start)
     return SearchResponse(results=results)
 

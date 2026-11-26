@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from contract_risk_analyzer.data.schemas import Clause, ClausePrediction, RiskReport
-from contract_risk_analyzer.modeling.registry import load_legalpro_model, load_local_model
+from contract_risk_analyzer.modeling.registry import load_legalpro_model, load_local_model, load_onnx_model
 from contract_risk_analyzer.preprocessing.chunking import split_into_clauses
 from contract_risk_analyzer.risk.report import generate_risk_report
 
@@ -57,7 +57,15 @@ def _resolve_classifier(
     if model_path is not None and str(model_path).endswith(".joblib"):
         return load_local_model(model_path)
 
-    chosen_backend = (backend or os.getenv("CONTRACT_RISK_CLASSIFIER", "legalpro")).strip().lower()
+    chosen_backend = (
+        backend
+        or os.getenv("CONTRACT_RISK_BACKEND")
+        or os.getenv("CONTRACT_RISK_CLASSIFIER", "legalpro")
+    ).strip().lower()
+
+    if chosen_backend == "onnx":
+        target_dir = model_path or os.getenv("CONTRACT_RISK_ONNX_DIR", "NLP/LEDGAR_SRA_ONNX")
+        return load_onnx_model(target_dir)
 
     if chosen_backend == "tfidf":
         target_path = model_path or "models/baseline_tfidf.joblib"

@@ -13,37 +13,21 @@ from transformers import AutoModelForSequenceClassification, AutoTokenizer
 from contract_risk_analyzer.config.settings import load_yaml, resolve_path
 from contract_risk_analyzer.data.schemas import ClausePrediction
 from contract_risk_analyzer.modeling.ledgar_labels import ID_TO_LABEL, LABEL_TO_ID, LEDGAR_LABELS
+from contract_risk_analyzer.modeling.status import (
+    DEFAULT_MODEL_ID,
+    DEFAULT_REVISION,
+    ModelRuntimeStatus,
+    _RUNTIME_STATUS,
+    get_model_runtime_status,
+)
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_MODEL_ID = "AmitTewari/test_trainer"
-DEFAULT_REVISION = "3fadda4002fc230b2195e1fe4c499af158418838"
 DEFAULT_SELF_CHECK_TEXT = (
     "This Agreement shall be governed by and construed in accordance with the laws "
     "of the State of Delaware, without giving effect to any principles of conflicts of law."
 )
 DEFAULT_SELF_CHECK_EXPECTED = "Governing Laws"
-
-
-@dataclass
-class ModelRuntimeStatus:
-    active_backend: str = "legalpro"
-    model_name: str = "LegalPro-BERT"
-    model_id: str | None = DEFAULT_MODEL_ID
-    revision: str | None = DEFAULT_REVISION
-    num_labels: int = 100
-    max_length: int | None = 512
-    fallback_active: bool = False
-    fallback_reason: str | None = None
-    model_loaded: bool = False
-
-
-_RUNTIME_STATUS = ModelRuntimeStatus()
-
-
-def get_model_runtime_status() -> ModelRuntimeStatus:
-    """Return runtime metadata and fallback status for active model."""
-    return _RUNTIME_STATUS
 
 
 class LegalProClassifier:
