@@ -20,9 +20,10 @@ from __future__ import annotations
 
 import math
 from collections import defaultdict
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 DEFAULT_SCORING: dict[str, Any] = {
     "repeat_bonus_per_log": 0.15,
@@ -166,3 +167,49 @@ def load_config(path: str | Path = "configs/risk_rules.yaml") -> dict[str, Any]:
 
     with open(path, encoding="utf-8") as fh:
         return yaml.safe_load(fh) or {}
+
+
+def severity_breakdown(flags: Iterable[Any]) -> dict[str, int]:
+    counts = {s: 0 for s in SEVERITY_ORDER}
+    for f in flags:
+        sev = str(_get(f, "severity", "medium")).lower()
+        if sev in counts:
+            counts[sev] += 1
+        else:
+            counts[sev] = 1
+    return counts
+
+
+def calculate_overall_risk_score(
+    flags: Iterable[Any],
+    config_path: str | Path = "configs/risk_rules.yaml",
+    total_clauses: int | None = None,
+) -> float:
+    config = load_config(config_path)
+    flag_list = list(flags)
+    n_clauses = total_clauses if total_clauses is not None else len(flag_list)
+    breakdown = calculate_risk_score(flag_list, total_clauses=n_clauses, config=config)
+    return breakdown.overall_score
+
+
+def severity_breakdown(flags: Iterable[Any]) -> dict[str, int]:
+    counts = {s: 0 for s in SEVERITY_ORDER}
+    for f in flags:
+        sev = str(_get(f, "severity", "medium")).lower()
+        if sev in counts:
+            counts[sev] += 1
+        else:
+            counts[sev] = 1
+    return counts
+
+
+def calculate_overall_risk_score(
+    flags: Iterable[Any],
+    config_path: str | Path = "configs/risk_rules.yaml",
+    total_clauses: int | None = None,
+) -> float:
+    config = load_config(config_path)
+    flag_list = list(flags)
+    n_clauses = total_clauses if total_clauses is not None else len(flag_list)
+    breakdown = calculate_risk_score(flag_list, total_clauses=n_clauses, config=config)
+    return breakdown.overall_score

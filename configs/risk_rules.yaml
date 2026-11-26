@@ -63,19 +63,35 @@ matching:
 # ---------------------------------------------------------------------
 # Overall score
 # ---------------------------------------------------------------------
+# Length-independent scoring (v3). A long contract is NOT riskier just
+# because it has more clauses.
+#   1. Each flag_type counts ONCE (best confidence), not once per clause.
+#   2. Repeats add a small log bonus: 1 + min(0.15 x ln(n), 0.30).
+#   3. Saturating curve: base = 100 x (1 - e^(-raw / saturation_k)).
+#   4. Density: share of risky clauses moves the score by at most +/-10%.
+#   5. Severity ceiling/floor: floor <= score <= ceiling of the WORST
+#      severity found. Only low risks -> max 25 even with 500 flags;
+#      one critical risk -> at least 40.
 scoring:
-  mode: saturating                 # 100 * (1 - exp(-raw / saturation_k))
-  per_category: max                # one value per flag_type (best confidence)
-  repeat_bonus: 0.10               # +10% of weight per extra clause in same category
-  repeat_bonus_cap: 0.30           # at most +30% of weight
+  mode: saturating_v3
+  repeat_bonus_per_log: 0.15       # bonus = 0.15 x ln(number of clauses in category)
+  repeat_bonus_cap: 0.30           # never more than +30% for repeats
   saturation_k: 90                 # higher k = lower scores overall
+  severity_ceiling:
+    low: 25                        # only low risks found     -> score at most 25
+    medium: 55                     # worst risk is medium     -> at most 55
+    high: 80                       # worst risk is high       -> at most 80
+    critical: 100                  # at least one critical    -> can reach 100
+  severity_floor:                  # minimum score by worst severity found
+    low: 0
+    medium: 0
+    high: 30                       # any high risk     -> at least 30 (Medium)
+    critical: 40                   # any critical risk -> at least 40 (Medium)
+  density:
+    enabled: true
+    reference_density: 0.25        # 25% of clauses risky = no adjustment
+    max_adjustment: 0.10           # at most +/-10%
   round_to: 1
-
-# Approximate results with k = 90:
-#   one medium risk  (16)  -> ~16
-#   one critical risk (40) -> ~36
-#   3 medium + 1 high (76) -> ~57
-#   2 critical + 2 high (136) -> ~78
 
 bands:
   - { name: Low,      min: 0,  max: 30,  color: "#2e7d32", action: "Standard review is enough." }

@@ -31,6 +31,8 @@ class RiskFlag(BaseModel):
     reason: str
     evidence_text: str
     confidence: float = Field(ge=0.0, le=1.0)
+    title: str = ""
+    recommendation: str = ""
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -44,6 +46,11 @@ class RiskReport(BaseModel):
     severity_breakdown: dict[str, int]
     recommendations: list[str]
     disclaimer: str
+    risk_level: str | None = None
+    risk_color: str | None = None
+    risk_action: str | None = None
+    worst_severity: str | None = None
+    category_breakdown: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class SearchResult(BaseModel):
