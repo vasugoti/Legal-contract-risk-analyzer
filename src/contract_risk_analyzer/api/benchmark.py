@@ -48,11 +48,11 @@ def build_benchmark_payload(
 
     # Use LEDGAR-SRA metrics if roberta is active and sra_data is present
     if is_roberta and sra_data:
-        lp_acc = sra_data.get("accuracy", 0.9283)
-        lp_macro = sra_data.get("macro_f1", 0.8819)
-        lp_weighted = sra_data.get("weighted_f1", 0.9283)
-        lp_micro = sra_data.get("micro_f1", 0.9283)
-        lp_top3 = sra_data.get("top3_accuracy", 0.9850)
+        lp_acc = sra_data.get("accuracy", 0.6550)
+        lp_macro = sra_data.get("macro_f1", 0.3881)
+        lp_weighted = sra_data.get("weighted_f1", 0.6550)
+        lp_micro = sra_data.get("micro_f1", 0.6550)
+        lp_top3 = sra_data.get("top3_accuracy", 0.8520)
         lp_gpu = sra_data.get("gpu_ms_per_clause_t4", 3.8)
         lp_cpu = sra_data.get("cpu_ms_per_clause_laptop", 31.45)
         active_neural_data = sra_data
@@ -104,6 +104,13 @@ def build_benchmark_payload(
             "tfidf": "—",
             "legalpro": f"{lp_top3 * 100:.2f}%",
             "change": "—",
+        },
+        {
+            "metric": "Notebook (label-guided SRA, not comparable)",
+            "tfidf": "—",
+            "legalpro": f"acc: {sra_data.get('notebook_accuracy', 0.9283)*100:.2f}% | macro-F1: {sra_data.get('notebook_macro_f1', 0.8819):.4f}" if is_roberta else "—",
+            "change": "Reference",
+            "is_reference": True,
         },
         {
             "metric": "Legal-BERT, LexGLUE paper (published)",

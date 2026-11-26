@@ -1,0 +1,99 @@
+1
+00:00:00,965 --> 00:00:05,055
+Contracts are long, dense, and easy to sign without reading.
+
+2
+00:00:05,105 --> 00:00:08,645
+Contract Risk Analyzer reads the fine print for you.
+
+3
+00:00:09,652 --> 00:00:14,432
+Start by uploading a PDF or Word file, or simply paste the text.
+
+4
+00:00:14,482 --> 00:00:17,302
+Let's try a one-sided vendor contract.
+
+5
+00:00:18,698 --> 00:00:21,848
+With one click, the contract is split into clauses,
+
+6
+00:00:21,898 --> 00:00:26,738
+and a fine-tuned RoBERTa model classifies every clause into one of one hundred
+
+7
+00:00:26,788 --> 00:00:27,868
+LEDGAR categories.
+
+8
+00:00:28,886 --> 00:00:33,306
+The verdict comes first: a single risk score from zero to one hundred,
+
+9
+00:00:33,356 --> 00:00:36,056
+a risk level, and a clear course of action.
+
+10
+00:00:36,106 --> 00:00:40,396
+Each type of risk counts once, so a long contract is never penalised
+
+11
+00:00:40,446 --> 00:00:41,676
+just for being long.
+
+12
+00:00:42,687 --> 00:00:47,367
+Below it, the principal risks are grouped by type and ordered by severity.
+
+13
+00:00:50,144 --> 00:00:51,974
+Every finding is explainable.
+
+14
+00:00:52,024 --> 00:00:56,564
+You see the exact clause, the risky phrase highlighted, why it matters,
+
+15
+00:00:56,614 --> 00:00:59,214
+and a practical recommendation to fix it.
+
+16
+00:01:04,050 --> 00:01:09,830
+The complete analysis can be downloaded as a print-ready PDF, a Word document,
+
+17
+00:01:09,880 --> 00:01:11,630
+a web page, or raw JSON.
+
+18
+00:01:12,632 --> 00:01:14,762
+You can also test a single clause.
+
+19
+00:01:14,812 --> 00:01:18,292
+The model shows its predicted category, its confidence,
+
+20
+00:01:18,342 --> 00:01:20,792
+and the other categories it considered.
+
+21
+00:01:24,906 --> 00:01:27,166
+And the model tab reports live usage,
+
+22
+00:01:27,216 --> 00:01:30,976
+with honest benchmark results on the LexGLUE LEDGAR test set.
+
+23
+00:01:31,981 --> 00:01:33,591
+Contract Risk Analyzer.
+
+24
+00:01:33,641 --> 00:01:36,261
+Read the fine print, before you sign.
+
+25
+00:01:36,311 --> 00:01:40,951
+Try it free at legal contract risk analyzer dot onrender dot com.

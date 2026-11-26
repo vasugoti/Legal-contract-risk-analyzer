@@ -1,174 +1,234 @@
-# Legal Contract Risk Analyzer
+<div align="center">
 
-**NLP-based clause classification and risk triage for legal contracts, with a full web interface.**
+# Contract Risk Analyzer
 
-![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688?logo=fastapi&logoColor=white)
-![scikit-learn](https://img.shields.io/badge/scikit--learn-TF--IDF%20%2B%20LogReg-F7931E?logo=scikitlearn&logoColor=white)
-![Dataset](https://img.shields.io/badge/Dataset-LexGLUE%20LEDGAR-6f42c1)
-![Status](https://img.shields.io/badge/Status-Academic%20Project-informational)
+**Read the fine print, before you sign.**
 
-Legal Contract Risk Analyzer reads a contract (PDF, DOCX or plain text), splits it into clauses, classifies each clause with a machine-learning model trained on the **LexGLUE LEDGAR** dataset, and applies transparent, configurable risk rules to produce a structured **triage report**: an overall risk score, severity breakdown, per-clause risk flags with evidence, and review recommendations.
+An NLP system that reads a contract, classifies every clause into one of 100 LEDGAR categories, flags risky wording, and produces a clear, length-independent risk report — with a recommendation for every finding.
 
-The system runs entirely locally. It needs **no paid APIs, no API keys and no GPU**.
+[![Live demo](https://img.shields.io/badge/Live%20demo-legal--contract--risk--analyzer.onrender.com-8b6a48?style=for-the-badge)](https://legal-contract-risk-analyzer.onrender.com/)
 
-> **Disclaimer:** This tool is for document analysis and risk triage only. It is **not legal advice** and does not replace review by a qualified lawyer. All findings require human review.
+![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-API-009688?logo=fastapi&logoColor=white)
+![RoBERTa](https://img.shields.io/badge/Model-RoBERTa%20(LEDGAR)-6f42c1)
+![ONNX Runtime](https://img.shields.io/badge/ONNX%20Runtime-INT8-005CED?logo=onnx&logoColor=white)
+![Dataset](https://img.shields.io/badge/Dataset-LexGLUE%20LEDGAR-2b1f17)
+![Render](https://img.shields.io/badge/Hosted%20on-Render%20(free)-46E3B7?logo=render&logoColor=black)
+
+<br/>
+
+<a href="docs/demo/demo.mp4"><img src="docs/demo/demo.gif" alt="Demo: analysing a one-sided vendor contract, filtering critical findings, downloading the report and classifying a single clause" width="100%"/></a>
+
+<sub>▶ <a href="docs/demo/demo-explainer.mp4"><b>Watch the narrated explainer video (≈2 min, with voice-over)</b></a> &nbsp;·&nbsp; <a href="docs/demo/demo.mp4">Silent walkthrough</a></sub>
+
+</div>
+
+> [!IMPORTANT]
+> This tool performs automated **risk triage**. It is **not legal advice** and does not replace review by a qualified lawyer.
 
 ---
 
-## Table of Contents
+## Contents
 
-- [Key Features](#key-features)
-- [How It Works](#how-it-works)
-- [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
-- [Getting Started](#getting-started)
-- [Using the Web Application](#using-the-web-application)
-- [Risk Model and Scoring](#risk-model-and-scoring)
-- [Sample Agreements for Testing](#sample-agreements-for-testing)
-- [REST API Reference](#rest-api-reference)
-- [Model Training and Evaluation](#model-training-and-evaluation)
+- [What it does](#what-it-does)
+- [Screenshots](#screenshots)
+- [Features](#features)
+- [How it works](#how-it-works)
+- [Model and results](#model-and-results)
+- [Risk engine and scoring](#risk-engine-and-scoring)
+- [Tech stack](#tech-stack)
+- [Run it locally](#run-it-locally)
+- [Deployment (free)](#deployment-free)
+- [REST API](#rest-api)
+- [Project structure](#project-structure)
 - [Testing](#testing)
-- [Limitations](#limitations)
-- [Future Work](#future-work)
+- [Limitations and future work](#limitations-and-future-work)
 - [Acknowledgements](#acknowledgements)
 
 ---
 
-## Key Features
+## What it does
 
-| Feature | Description |
-| --- | --- |
-| **Document upload** | Upload a contract as **PDF, DOCX or TXT** (up to 10 MB). Text is extracted automatically with PyMuPDF / python-docx. |
-| **Clause segmentation** | Contracts are cleaned and split into numbered clauses for individual analysis. |
-| **Clause classification** | Each clause is assigned a LEDGAR provision type (e.g. *Termination*, *Payments*, *Governing Laws*) with a confidence score and top-k alternatives. |
-| **Rule-based risk detection** | 10 risk categories across 4 severity levels, defined in a single, editable YAML file. |
-| **Risk scoring (0–100)** | A confidence-weighted overall score with a Critical / High / Medium / Low breakdown. |
-| **Triage report** | Risk flags with clause references, reasons and evidence snippets, plus a clause taxonomy breakdown and recommendations. |
-| **Single-clause analysis** | Classify and risk-check one clause at a time, with presets for common clause types. |
-| **Precedent search** | Find semantically similar clauses using TF-IDF retrieval (optional sentence-transformer embeddings). |
-| **Metrics dashboard** | Live API latency, documents and clauses analysed, and baseline model benchmark figures. |
-| **Demo (mock) mode** | Runs instantly without a trained model, using a deterministic keyword classifier, which is ideal for demonstrations. |
+1. **Upload** a contract (PDF, DOCX or TXT) or paste its text.
+2. The contract is **cleaned and split into clauses**.
+3. A **fine-tuned RoBERTa model** (LEDGAR-SRA) assigns every clause one of **100 LEDGAR provision types** — *Indemnifications*, *Terminations*, *Governing Laws* and so on — with a confidence score.
+4. A transparent **rule engine** (28 risk types, 4 severity levels) looks for one-sided or unusual wording such as unlimited liability, termination without notice or a post-contract non-compete.
+5. You get a **risk score from 0 to 100**, a risk level, every finding with the exact risky phrase highlighted, a recommendation for each one, and a downloadable report.
+
+Try it now: **https://legal-contract-risk-analyzer.onrender.com/** → *Samples* → *Vendor contract* → *Analyse contract*.
+
+> The free hosting plan sleeps after 15 minutes of inactivity. The first visit can take about a minute to wake up, and the first analysis 20–60 seconds.
 
 ---
 
-## How It Works
+## Screenshots
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/01-home.png" alt="Home page with contract upload and how-it-works steps"/><br/><sub><b>Home</b> — upload a document or paste text; try built-in samples.</sub></td>
+    <td width="50%"><img src="docs/images/02-risk-report.png" alt="Risk report with score, risk level, scale and severity counts"/><br/><sub><b>Risk report</b> — score, level, course of action and severity counts.</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/images/03-findings.png" alt="Expanded finding with highlighted clause text and recommendation"/><br/><sub><b>Findings</b> — the risky phrase is highlighted, with a recommendation.</sub></td>
+    <td><img src="docs/images/04-download-report.png" alt="Download menu with PDF, Word, HTML and JSON formats"/><br/><sub><b>Download</b> — full report as PDF, Word, HTML or JSON.</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/images/05-single-clause.png" alt="Single clause classification with confidence and top candidates"/><br/><sub><b>Single clause</b> — category, confidence, top candidates and rules fired.</sub></td>
+    <td><img src="docs/images/06-model.png" alt="Model tab with usage counters and benchmark"/><br/><sub><b>Model</b> — live usage counters and benchmark results.</sub></td>
+  </tr>
+</table>
+
+<p align="center"><img src="docs/images/07-mobile.png" alt="Mobile view of the risk report" width="280"/><br/><sub><b>Mobile</b> — fully responsive.</sub></p>
+
+---
+
+## Features
+
+| | |
+| --- | --- |
+| **Document input** | PDF, DOCX and TXT upload (drag and drop) or pasted text. Text extraction with PyMuPDF and python-docx. |
+| **Clause classification** | 100 LEDGAR categories with confidence and top-k alternatives, using an INT8 ONNX export of the fine-tuned RoBERTa model. |
+| **Risk detection** | 28 risk types across low, medium, high and critical severity, defined in one editable YAML file. Whole-word matching, exclusion phrases and confidence thresholds keep false alarms down. |
+| **Length-independent score** | A long contract is not scored higher just because it has more clauses (see [scoring](#risk-engine-and-scoring)). |
+| **Explainable findings** | Every finding shows the clause, the highlighted trigger phrase, why it matters and a concrete recommendation. |
+| **Indian-law aware** | Rules cover lock-in periods, security deposits, rent escalation, Section 27 non-competes, unilateral arbitrator appointment and the DPDP Act 2023. |
+| **Report export** | Print-ready A4 PDF, Word (.doc), standalone HTML and raw JSON, optionally with the full contract text as an appendix. |
+| **Single-clause mode** | Classify and risk-check one clause, with example presets. |
+| **Lightweight deployment** | Runs in about 355 MB of RAM with no PyTorch, so it fits the Render free plan. |
+
+---
+
+## How it works
 
 <p align="center">
-  <img src="docs/images/architecture.png" alt="System architecture of Legal Contract Risk Analyzer: presentation layer, FastAPI layer, NLP core engine and offline training pipeline" width="100%">
+  <img src="docs/images/architecture.png" alt="System architecture: web UI, FastAPI layer, NLP core and offline training pipeline" width="100%"/>
 </p>
 
-1. **Extraction:** the uploaded file is converted to plain text (`/extract-text`). Scanned or image-only PDFs are rejected with a clear message.
-2. **Segmentation:** text is normalised and split on numbered clause headings (`1.`, `2.`, `3.1` …).
-3. **Classification:** each clause is labelled by the trained LEDGAR model (or by the keyword classifier in demo mode).
-4. **Risk detection:** a clause is flagged when its **predicted label** matches a risk category, or when its **text** contains one of that category's trigger phrases.
-5. **Scoring and reporting:** flags are weighted by severity and model confidence, then assembled into a report with recommendations.
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-| --- | --- |
-| Language | Python 3.11+ |
-| Machine learning | scikit-learn (TF-IDF vectoriser + Logistic Regression), joblib |
-| Optional deep learning | Hugging Face Transformers (DistilBERT), PyTorch, sentence-transformers, FAISS |
-| Dataset | LexGLUE **LEDGAR** (≈80,000 labelled contract provisions, 100 classes) |
-| Backend | FastAPI, Uvicorn, Pydantic v2 |
-| Document parsing | PyMuPDF (PDF), python-docx (DOCX) |
-| Frontend | HTML5, CSS3, vanilla JavaScript (served by FastAPI) |
-| Configuration | YAML |
-| Quality | pytest, Ruff, GitHub Actions CI |
-| Deployment (optional) | Docker, docker-compose |
-
----
-
-## Project Structure
-
 ```text
-Legal-contract-risk-analyzer/
-├── configs/
-│   ├── risk_rules.yaml          # Risk categories, trigger phrases, severity weights
-│   ├── baseline.yaml            # TF-IDF + Logistic Regression settings
-│   ├── transformer.yaml         # Optional DistilBERT fine-tuning settings
-│   ├── retrieval.yaml           # Precedent search settings
-│   ├── data.yaml                # Dataset sources and output paths
-│   └── api.yaml                 # API service settings
-├── src/contract_risk_analyzer/
-│   ├── api/                     # FastAPI app, routes, schemas, /extract-text upload endpoint
-│   ├── web/                     # Web UI: index.html, styles.css, app.js
-│   ├── preprocessing/           # Text cleaning and clause segmentation
-│   ├── modeling/                # Baseline + transformer training, prediction, model registry
-│   ├── risk/                    # Risk rules, scoring and report generation
-│   ├── retrieval/               # Clause embedding, indexing and similarity search
-│   ├── evaluation/              # Metrics and error analysis
-│   ├── data/                    # LEDGAR / CUAD download, preparation and validation
-│   └── utils/                   # I/O, logging, reproducibility helpers
-├── scripts/                     # CLI entry points (download, train, evaluate, analyze)
-├── legal_agreement/             # Sample contracts at different risk levels (for testing)
-├── data/samples/                # Small committed samples, including upload test files
-├── docs/                        # Model card, dataset notes, benchmarks, API usage
-├── notebooks/                   # Dataset exploration
-├── tests/                       # Unit and API tests
-├── models/                      # Trained model artifacts (generated locally, git-ignored)
-├── requirements.txt
-├── pyproject.toml
-├── Makefile
-└── Dockerfile
+Contract (PDF / DOCX / TXT)
+   │  extract text            PyMuPDF · python-docx
+   ▼
+Clean & segment             → clauses
+   │
+   ▼
+Classify each clause        LEDGAR-SRA RoBERTa (ONNX INT8) → label + confidence
+   │
+   ▼
+Risk rules                  configs/risk_rules.yaml → findings (severity, reason, fix)
+   │
+   ▼
+Score & report              length-independent score, level, recommendations, export
 ```
 
 ---
 
-## Getting Started
+## Model and results
 
-### Prerequisites
+All numbers are on the **LexGLUE LEDGAR** test split (100 classes).
 
-- Python **3.11 or newer**
-- Git
-- About 500 MB of free disk space if you train the model on LEDGAR
+| Model | Evaluation | Accuracy | Macro-F1 | Notes |
+| --- | --- | ---: | ---: | --- |
+| TF-IDF + Logistic Regression | full test set (10,000) | **83.07%** | **78.26%** | ~2 ms per clause on CPU |
+| LEDGAR-SRA (RoBERTa-base) | raw clauses, random 1,000 (seed 42) | 65.50% | 38.81% | how the live app uses the model |
+| LEDGAR-SRA, ONNX INT8 | raw clauses, 300 | 70.67% | — | 97.33% top-1 agreement with the PyTorch model |
 
-Docker is **not** required.
+**About the notebook's 92.83%.** The training notebook (`NLP/Untitled0.ipynb`) uses *Semantic Retrieval Augmentation* (SRA): for low-frequency classes, each input is paired with a related clause. During the notebook's test evaluation, that related clause was chosen **using the true test label**, which leaks the answer. The 92.83% accuracy / 88.19% macro-F1 reported there is therefore **not comparable** to the results above and is not claimed here. Re-training with label-free retrieval is listed under [future work](#limitations-and-future-work).
 
-### 1. Clone and install
+**Deployment model.** The RoBERTa model was exported to ONNX and dynamically quantized to INT8 (per-channel): **121 MB** instead of ~500 MB, **~355 MB peak RAM**, **~1.9 s per contract** on a laptop CPU, with no PyTorch at runtime.
+
+---
+
+## Risk engine and scoring
+
+Rules live in [`configs/risk_rules.yaml`](configs/risk_rules.yaml). Each rule has a severity, trigger phrases and regexes, exclusion phrases, optional LEDGAR labels, a reason and a recommendation.
+
+- A rule fires on **risky wording**, not on a normal clause type. A plain *Governing Laws* clause is not a risk; "exclusive jurisdiction of foreign courts" is.
+- The model's label raises confidence when it agrees with the wording. For risky-by-nature clause types (indemnity, change of control, waivers), the label alone can raise a flag, but only above a confidence threshold.
+- At most one finding per clause per risk type.
+
+**Overall score (0–100), independent of contract length:**
+
+1. Each risk **type** counts once, with weight `low 8 · medium 16 · high 28 · critical 40` × best confidence.
+2. Repeats add a small, capped bonus: `1 + min(0.15 · ln(n), 0.30)`.
+3. A saturating curve: `score = 100 · (1 − e^(−raw / 90))`, so piling up flags never reaches 100.
+4. The share of risky clauses adjusts the score by at most ±10%.
+5. Floor and ceiling by the worst severity: only low risks → at most 25; any critical risk → at least 40.
+
+| Level | Score | Suggested action |
+| --- | --- | --- |
+| Low | 0–30 | Standard review is enough. |
+| Medium | 30–60 | Negotiate the flagged clauses before signing. |
+| High | 60–80 | Get legal review before signing. |
+| Critical | 80–100 | Do not sign without a lawyer's review and changes. |
+
+Every value above is configurable in the YAML file without code changes.
+
+---
+
+## Tech stack
+
+| Layer | Technology |
+| --- | --- |
+| Model | RoBERTa-base fine-tuned on LEDGAR (Hugging Face Transformers, PyTorch — training only) |
+| Inference | ONNX Runtime (INT8), Hugging Face `tokenizers` |
+| Baseline | scikit-learn TF-IDF + Logistic Regression |
+| Backend | FastAPI, Pydantic, Uvicorn |
+| Documents | PyMuPDF, python-docx |
+| Frontend | HTML, CSS and vanilla JavaScript (no framework) |
+| Hosting | Render (app), Hugging Face Hub (model files) |
+
+---
+
+## Run it locally
+
+Requires **Python 3.11+** and Git.
 
 ```bash
 git clone https://github.com/vasugoti/Legal-contract-risk-analyzer.git
 cd Legal-contract-risk-analyzer
-
 python -m venv .venv
-# Windows
-.venv\Scripts\activate
-# macOS / Linux
-source .venv/bin/activate
-
-pip install -e ".[dev]"
 ```
 
-> **Note on PyTorch (CPU-only):** If you are running on CPU and want a smaller installation footprint, install CPU-only PyTorch:
-> ```bash
-> pip install torch --index-url https://download.pytorch.org/whl/cpu
-> ```
+Activate it: `.venv\Scripts\activate` (Windows) or `source .venv/bin/activate` (macOS / Linux).
 
-### 2. Run in demo mode (no model needed)
+### Option A — lightweight ONNX model (same as the live site)
 
-**Windows (PowerShell):**
+```bash
+pip install -r requirements-render.txt
+pip install -e . --no-deps
+```
+
+**Windows (PowerShell)**
 
 ```powershell
-$env:CONTRACT_RISK_MOCK_MODEL="true"
+$env:MODEL_BASE_URL="https://huggingface.co/vasugoti07/ledgar-sra-onnx/resolve/main"
+python scripts/download_model.py
+$env:CONTRACT_RISK_BACKEND="onnx"
+$env:CONTRACT_RISK_MOCK_MODEL="false"
 uvicorn contract_risk_analyzer.api.main:app --host 127.0.0.1 --port 8000
 ```
 
-**macOS / Linux:**
+**macOS / Linux**
 
 ```bash
-CONTRACT_RISK_MOCK_MODEL=true uvicorn contract_risk_analyzer.api.main:app --host 127.0.0.1 --port 8000
+export MODEL_BASE_URL=https://huggingface.co/vasugoti07/ledgar-sra-onnx/resolve/main
+python scripts/download_model.py
+CONTRACT_RISK_BACKEND=onnx CONTRACT_RISK_MOCK_MODEL=false \
+  uvicorn contract_risk_analyzer.api.main:app --host 127.0.0.1 --port 8000
 ```
 
-Open **http://127.0.0.1:8000** in your browser. Interactive API documentation is available at **http://127.0.0.1:8000/docs**.
+Open **http://127.0.0.1:8000** — API docs at **/docs**.
 
-### 3. Run with the trained model (recommended)
+### Option B — demo mode (no model download)
 
-Download LEDGAR and train the baseline once (about 3 minutes on a laptop CPU):
+```bash
+pip install -e .
+CONTRACT_RISK_MOCK_MODEL=true uvicorn contract_risk_analyzer.api.main:app --port 8000
+```
+
+(On Windows PowerShell: `$env:CONTRACT_RISK_MOCK_MODEL="true"` first.)
+
+### Option C — train the TF-IDF baseline yourself
 
 ```bash
 pip install -e ".[data]"
@@ -176,250 +236,135 @@ python scripts/download_data.py --dataset ledgar
 python scripts/train_baseline.py --config configs/baseline.yaml
 ```
 
-This creates `models/baseline_tfidf.joblib`. Then start the server in model mode:
-
-**Windows (PowerShell):**
-
-```powershell
-$env:CONTRACT_RISK_MOCK_MODEL="false"
-$env:CONTRACT_RISK_MODEL_PATH="models/baseline_tfidf.joblib"
-uvicorn contract_risk_analyzer.api.main:app --host 127.0.0.1 --port 8000
-```
-
-**macOS / Linux:**
-
-```bash
-CONTRACT_RISK_MOCK_MODEL=false CONTRACT_RISK_MODEL_PATH=models/baseline_tfidf.joblib \
-  uvicorn contract_risk_analyzer.api.main:app --host 127.0.0.1 --port 8000
-```
-
 ### Environment variables
 
-| Variable | Default | Purpose |
+| Variable | Purpose | Example |
 | --- | --- | --- |
-| `CONTRACT_RISK_MOCK_MODEL` | `false` | `true` = demo keyword classifier, `false` = trained model |
-| `CONTRACT_RISK_CLASSIFIER` | `legalpro` | `legalpro` = transformer model (LEDGAR-SRA / LegalPro), `tfidf` = TF-IDF baseline |
-| `CONTRACT_RISK_MODEL_CONFIG` | `configs/ledgar_sra.yaml` | Active model configuration path (alternative: `configs/legalpro.yaml`) |
-| `CONTRACT_RISK_MODEL_PATH` | `models/baseline_tfidf.joblib` | Path to fallback or direct classifier artifact |
-| `CONTRACT_RISK_RETRIEVAL_INDEX` | `models/retrieval` | Path to a prebuilt search index (optional) |
-
-> **Note on Model Weights:** Model weights are not stored on GitHub (size limit). Place `model.safetensors` in `NLP/LEDGAR_SRA/` before running.
-
-A template is provided in `.env.example`.
+| `CONTRACT_RISK_BACKEND` | Classifier backend | `onnx` |
+| `CONTRACT_RISK_MOCK_MODEL` | Keyword-based demo classifier, no model needed | `true` / `false` |
+| `MODEL_BASE_URL` | Where `scripts/download_model.py` fetches the ONNX files | Hugging Face `resolve/main` URL |
+| `CONTRACT_RISK_ONNX_DIR` | Folder with the ONNX model | `NLP/LEDGAR_SRA_ONNX` |
+| `CONTRACT_RISK_MODEL_CONFIG` | Config for the PyTorch backend | `configs/ledgar_sra.yaml` |
+| `CONTRACT_RISK_MODEL_PATH` | Path to the TF-IDF baseline | `models/baseline_tfidf.joblib` |
 
 ---
 
-## Using the Web Application
+## Deployment (free)
 
-The interface has four tabs:
+The live site runs on **Render's free plan** (512 MB RAM). The 121 MB ONNX model is hosted on **Hugging Face Hub** and downloaded during the build.
 
-1. **Document Analysis:** upload a PDF/DOCX/TXT contract or paste text, set a document ID, and click **Analyze**. The **Triage Report** shows the overall risk score, number of clauses evaluated, severity breakdown, recommendations, a **Detected Risk Flags** table (flag ID, clause reference, severity, type, reason, evidence) and a **Clause Taxonomy Breakdown**.
-2. **Clause Classification:** analyse a single clause. Presets are provided for termination, indemnification, liability, governing law and assignment clauses.
-3. **Precedent Search:** search for clauses similar to a query (for example, *"termination without cause"*).
-4. **System & Model Metrics:** API health, model mode, runtime latency and baseline benchmark results.
+| Render setting | Value |
+| --- | --- |
+| Language | Python 3 |
+| Build command | `pip install -r requirements-render.txt && pip install -e . --no-deps && python scripts/download_model.py` |
+| Start command | `uvicorn contract_risk_analyzer.api.main:app --host 0.0.0.0 --port $PORT` |
+| Environment | `CONTRACT_RISK_BACKEND=onnx`, `CONTRACT_RISK_MOCK_MODEL=false`, `PYTHON_VERSION=3.11.9`, `MODEL_BASE_URL=https://huggingface.co/vasugoti07/ledgar-sra-onnx/resolve/main` |
+| Health check | `/health` |
 
-<!-- Add a screenshot of the Triage Report here, for example:
-![Triage report](docs/images/triage-report.png) -->
-
----
-
-## Risk Model and Scoring
-
-### Risk categories
-
-All rules live in [`configs/risk_rules.yaml`](configs/risk_rules.yaml) and can be changed without touching code.
-
-| Risk category | Severity | Example trigger phrases |
-| --- | --- | --- |
-| Liability | **Critical** | unlimited liability, consequential damages, liquidated damages |
-| Non-compete | **Critical** | non-compete, compete with, competitive business |
-| Termination | High | terminate, termination, without cause, immediate effect |
-| Indemnification | High | indemnify, hold harmless, defend |
-| Exclusivity | High | exclusive, sole provider, not engage |
-| Change of control | High | change of control, merger, acquisition |
-| Confidentiality | Medium | confidential information, trade secret, non-disclosure |
-| Governing law | Medium | governed by, exclusive jurisdiction, venue |
-| Assignment | Medium | assign, assignment, without consent |
-| Payment | Medium | late payment, interest, invoice, non-refundable |
-
-### Score calculation
-
-Each flag contributes its severity weight multiplied by the model's confidence for that clause:
-
-```text
-flag score    = severity_weight × max(confidence, 0.25)
-              + 6   (uncertainty penalty, only if confidence < 0.55)
-
-overall score = min(100, Σ flag scores)
-```
-
-| Severity | Weight |
-| --- | ---: |
-| Critical | 40 |
-| High | 28 |
-| Medium | 16 |
-| Low | 8 |
-
-A contract with no flags scores **0**. A few medium-severity flags give a low-to-moderate score, and several high or critical flags quickly reach **100**.
+To re-create the ONNX model from the PyTorch weights: `python scripts/export_onnx.py`, then check it with `python scripts/check_onnx_accuracy.py`.
 
 ---
 
-## Sample Agreements for Testing
+## REST API
 
-The [`legal_agreement/`](legal_agreement/) folder contains fictional contracts written to exercise the full risk range:
-
-| File | Type | Intended risk level | Demo-mode score |
-| --- | --- | --- | ---: |
-| `Sample_SaaS_Agreement.pdf` | SaaS subscription | High (all 10 risk categories, 2 critical) | 100 |
-| `Sample_SaaS_Agreement_Medium_Risk.pdf` | SaaS subscription | Medium | ≈ 50 |
-| `Sample_SaaS_Agreement_Low_Risk.pdf` | SaaS subscription | Low | ≈ 14 |
-| `Sample_Rental_Agreement_Low_Risk.pdf` | Residential rental | Low | ≈ 13 |
-| `Sample_Rental_Agreement_Zero_Risk.pdf` | Residential rental | Minimal | 0 |
-| `Sample_Rental_Agreement_Zero_Risk_v2.pdf` | Residential rental | Minimal (reworded for model mode) | 0 |
-
-Scores in **model mode** can be higher, because the trained classifier may assign risk-related labels (e.g. *Payments*, *Terms*) to clauses that contain no trigger phrases.
-
-`data/samples/test_uploads/` contains files for testing the upload path, including an unsupported image and a scanned/empty PDF that should be rejected.
-
----
-
-## REST API Reference
+Interactive documentation: [`/docs`](https://legal-contract-risk-analyzer.onrender.com/docs).
 
 | Method | Endpoint | Description |
 | --- | --- | --- |
-| `GET` | `/health` | Service health check |
-| `GET` | `/model/info` | Active model, mock mode and model-loaded status |
-| `POST` | `/extract-text` | Upload a PDF/DOCX/TXT file (multipart) and get its text |
-| `POST` | `/analyze/document` | Full triage report for a contract |
-| `POST` | `/analyze/clause` | Classification and risk flags for a single clause |
-| `POST` | `/search/similar` | Top-k similar clauses for a query |
-| `GET` | `/metrics` | Runtime counters and average latency |
-
-**Example: analyse a document**
+| `GET` | `/health` | Service status |
+| `GET` | `/model/info` | Active model, backend and label count |
+| `POST` | `/extract-text` | Upload a PDF / DOCX / TXT file (`multipart/form-data`, field `file`) and get its text |
+| `POST` | `/analyze/clause` | Classify and risk-check one clause |
+| `POST` | `/analyze/document` | Full contract analysis and risk report |
+| `POST` | `/search/similar` | Similar precedent clauses (empty on the free deployment) |
+| `GET` | `/metrics` | Usage counters and benchmark data |
 
 ```bash
-curl -X POST http://127.0.0.1:8000/analyze/document \
+curl -X POST https://legal-contract-risk-analyzer.onrender.com/analyze/clause \
   -H "Content-Type: application/json" \
-  -d '{"document_id": "MSA-2026-001", "text": "1. Fees. Customer shall pay all invoices within 30 days. 2. Termination. Either party may terminate without cause."}'
+  -d '{"text": "The Vendor shall indemnify, defend and hold harmless the Company from any and all claims."}'
 ```
-
-**Example: upload a file**
 
 ```bash
-curl -X POST http://127.0.0.1:8000/extract-text \
-  -F "file=@legal_agreement/Sample_SaaS_Agreement.pdf"
+curl -X POST https://legal-contract-risk-analyzer.onrender.com/analyze/document \
+  -H "Content-Type: application/json" \
+  -d '{"document_id": "demo-001", "text": "1. Termination. The Company may terminate this Agreement at any time without cause. 2. Liability. The Vendor liability shall be unlimited."}'
 ```
-
-The document report includes `overall_risk_score`, `severity_breakdown`, `risk_flags`, `predicted_clause_types`, `recommendations` and the legal disclaimer. See [`docs/api_usage.md`](docs/api_usage.md) for more examples.
 
 ---
 
-## Model Training and Evaluation
+## Project structure
 
-### Dataset
-
-**LexGLUE LEDGAR** is a public corpus of contract provisions taken from SEC filings, each labelled with one of 100 provision types. The dataset is downloaded at setup time and is not committed to the repository.
-
-| Split | Records |
-| --- | ---: |
-| Train | 60,000 |
-| Validation | 10,000 |
-| Test | 10,000 |
-
-### Fine-Tuned Transformer: LEDGAR-SRA (Primary Model)
-
-The primary clause-classification model is **LEDGAR-SRA**, a RoBERTa-base sequence classification model (12 layers, 768 hidden, ~125M parameters) fine-tuned on the LexGLUE LEDGAR corpus across 100 clause categories.
-- Stored locally in `NLP/LEDGAR_SRA/` and loaded completely offline (`local_files_only=True`).
-- Configured in [`configs/ledgar_sra.yaml`](configs/ledgar_sra.yaml).
-- Evaluates with startup self-checks and automatic fallback to TF-IDF baseline if weights are missing or self-check fails.
-
-### Alternative Backends
-
-1. **LegalPro-BERT**: BERT-base-cased fine-tuned on LEDGAR (`AmitTewari/test_trainer`), configured in [`configs/legalpro.yaml`](configs/legalpro.yaml). Enable via `CONTRACT_RISK_MODEL_CONFIG=configs/legalpro.yaml`.
-2. **TF-IDF + Logistic Regression Baseline**: Fast baseline (50,000 features, class-balanced), configured in [`configs/baseline.yaml`](configs/baseline.yaml). Enable via `CONTRACT_RISK_CLASSIFIER=tfidf`.
-
-```bash
-python scripts/train_baseline.py --config configs/baseline.yaml
-python scripts/evaluate_model.py --config configs/baseline.yaml --model models/baseline_tfidf.joblib
-```
-
-### Reference results (LEDGAR test set)
-
-| Metric | TF-IDF + LogReg | LegalPro-BERT | Change |
-| --- | ---: | ---: | ---: |
-| Test Accuracy | 83.07% | **87.05%** | +3.98 pts |
-| Test Macro F1 | 0.7826 | **0.8014** | +1.88 pts |
-| Test Weighted F1 | 0.8332 | **0.8647** | +3.15 pts |
-| Test Micro F1 | 0.8307 | **0.8705** | +3.98 pts |
-| Top-3 Accuracy | — | **95.82%** | — |
-| *Legal-BERT, LexGLUE paper (published)* | *micro-F1: 0.882* | *macro-F1: 0.830* | *Reference* |
-
-Macro F1 is reported because LEDGAR is highly imbalanced, and accuracy alone hides weak performance on rare clause types. Transformer inference achieves **4.2 ms per clause on GPU (T4)** and **31.45 ms per clause on laptop CPU** (TF-IDF baseline: 1.99 ms). See [`docs/benchmark_report.md`](docs/benchmark_report.md), [`docs/model_card.md`](docs/model_card.md) and [`docs/error_analysis.md`](docs/error_analysis.md) for more detail.
-
-### Optional: transformer model
-
-A DistilBERT fine-tuning pipeline is included for experimentation (GPU recommended):
-
-```bash
-pip install -e ".[transformers]"
-python scripts/train_transformer.py --config configs/transformer.yaml \
-  --max-train-samples 500 --max-eval-samples 200 --epochs 1
-```
-
-### Command-line analysis
-
-```bash
-python scripts/analyze_document.py \
-  --input data/samples/sample_contract.txt \
-  --output data/outputs/risk_report.json \
-  --model models/baseline_tfidf.joblib     # or --mock
+```text
+Legal-contract-risk-analyzer/
+├── src/contract_risk_analyzer/
+│   ├── api/            FastAPI app, routes, request/response schemas
+│   ├── modeling/       ONNX classifier, RoBERTa / TF-IDF backends, registry
+│   ├── risk/           rule engine, scoring, report builder
+│   ├── data/           cleaning and clause segmentation
+│   └── web/            frontend (index.html, styles.css, app.js)
+├── configs/            risk_rules.yaml, model and API configs
+├── NLP/                training notebook, LEDGAR-SRA model, ONNX export
+├── scripts/            training, evaluation, ONNX export, deployment helpers
+├── legal_agreement/    sample contracts for testing
+├── reports/            evaluation metrics
+├── docs/               model card, benchmark report, images, demo video
+└── tests/              pytest suite
 ```
 
 ---
 
 ## Testing
 
-The test suite is deterministic and runs offline without a trained model:
-
 ```bash
+pip install -e ".[dev]"
 python -m pytest -q
 python -m ruff check src tests scripts
 ```
 
-GitHub Actions runs compilation, linting and tests on every push (`.github/workflows/ci.yml`).
+Sample contracts in [`legal_agreement/`](legal_agreement) cover zero, low and medium risk rental and SaaS agreements.
+
+To refresh the screenshots and silent demo in this README from the live site:
+
+```bash
+pip install playwright imageio-ffmpeg edge-tts
+python -m playwright install chromium
+python scripts/capture_readme_media.py
+```
+
+To make the narrated explainer video (neural voice-over, title cards, zoom, subtitles), start the app locally and run:
+
+```bash
+python scripts/make_demo_video.py                              # US English voice
+python scripts/make_demo_video.py --voice en-IN-PrabhatNeural  # Indian English voice
+```
 
 ---
 
-## Limitations
+## Limitations and future work
 
-- **Not legal advice.** The output is a triage aid and must be reviewed by a qualified person.
-- **Heuristic risk layer.** Rules match labels and phrases, not legal meaning. A fair clause titled *"Termination"* is flagged, while an unfair clause worded without trigger phrases may not be.
-- **Label-based flags.** In model mode, any clause classified into a risk-related category is flagged, even if its terms are balanced.
-- **English only.** The model is trained on US-style English contracts (SEC filings). Indian and other jurisdictions' contracts are outside its training domain.
-- **Digital documents only.** Scanned or image-only PDFs are not supported (no OCR).
-- **Segmentation edge cases.** A sentence ending in a number (e.g. *"… October 2027. The parties …"*) can be split into an extra clause.
-- **Uncalibrated confidence.** Model confidence scores are not probability-calibrated.
+**Limitations**
 
----
+- On raw clauses the deployed RoBERTa model (65.5%) is less accurate than the TF-IDF baseline (83.07%), because it was trained with retrieval-augmented inputs that are not available at inference time.
+- Risk rules are phrase-based. They can miss unusual wording and cannot judge commercial context or which party you are.
+- Scanned PDFs need OCR first; only English contracts are supported.
+- On the free plan the app sleeps when idle and analysis is slower (0.1 CPU).
 
-## Future Work
+**Future work**
 
-- OCR support for scanned contracts (e.g. Tesseract)
-- Require both a matching label **and** a trigger phrase before flagging, to reduce false positives
-- Context-aware rules that distinguish one-sided from mutual obligations
-- Fine-tuned legal language model (e.g. Legal-BERT) for higher accuracy
-- Clause-level explanations highlighting the exact trigger words
-- Downloadable PDF triage reports
-- Indian contract dataset and jurisdiction-specific risk rules
+- Re-train LEDGAR-SRA with **label-free retrieval** (nearest training clause by embedding similarity) and evaluate on raw clauses.
+- Combine the TF-IDF and transformer predictions in an ensemble.
+- Party-aware risk ("which side am I on?").
+- OCR support for scanned documents and multilingual contracts.
 
 ---
 
 ## Acknowledgements
 
-- This project builds on [**IlliaSator/contract-risk-analyzer**](https://github.com/IlliaSator/contract-risk-analyzer), which provides the core NLP pipeline, baseline model, risk engine and API. This repository adds a complete web interface, PDF/DOCX/TXT upload and text extraction, and a set of risk-graded sample agreements for testing.
-- [LexGLUE](https://github.com/coastalcph/lex-glue) and the **LEDGAR** dataset (Tuggener et al., 2020).
-- [FastAPI](https://fastapi.tiangolo.com/), [scikit-learn](https://scikit-learn.org/) and [PyMuPDF](https://pymupdf.readthedocs.io/).
+- **LexGLUE / LEDGAR** — Chalkidis et al., *LexGLUE: A Benchmark Dataset for Legal Language Understanding in English* (ACL 2022); Tuggener et al., *LEDGAR* (LREC 2020).
+- **RoBERTa** — Liu et al., 2019, via Hugging Face Transformers.
+- **ONNX Runtime**, **FastAPI**, **scikit-learn**, **PyMuPDF**.
 
----
-
-<sub>All sample agreements in this repository are fictional and created for software testing only.</sub>
+<div align="center">
+<sub>Built as a final-year B.Tech NLP project · <a href="https://legal-contract-risk-analyzer.onrender.com/">Live demo</a> · Not legal advice</sub>
+</div>
