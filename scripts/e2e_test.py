@@ -6,6 +6,7 @@ os.environ["CONTRACT_RISK_MOCK_MODEL"] = "false"
 os.environ["HF_HUB_OFFLINE"] = "1"
 
 from fastapi.testclient import TestClient
+
 from contract_risk_analyzer.api.main import app
 
 client = TestClient(app)
@@ -32,7 +33,7 @@ print(f"Risk Flags: {len(clause_data['risk_flags'])}")
 
 print("\n=== 4. POST /analyze/document (data/samples/sample_contract.txt) ===")
 sample_doc_path = Path("data/samples/sample_contract.txt")
-with open(sample_doc_path, "r", encoding="utf-8") as f:
+with open(sample_doc_path, encoding="utf-8") as f:
     doc_text = f.read()
 
 r_doc = client.post("/analyze/document", json={"document_id": "sample-doc-1", "text": doc_text})
